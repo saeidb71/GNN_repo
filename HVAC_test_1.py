@@ -491,13 +491,13 @@ def train():
       optimizer.step()
     return loss, embedding
 
-"""print("Starting training...")
+print("Starting training...")
 
 with mlflow.start_run():
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
     losses = []
-    for epoch in range(300):
+    for epoch in range(10000):
         loss, h = train()
         losses.append(loss)
         if epoch % 100 == 0:
@@ -518,7 +518,7 @@ with mlflow.start_run():
     mlflow.pytorch.log_model(model, "models")
 
 model_path = 'trained_model_1.pth'
-torch.save(model.state_dict(), model_path)"""
+torch.save(model.state_dict(), model_path)
 
 
 #-----------------------------------------Test Learned Model---------------------------------------
