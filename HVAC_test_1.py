@@ -33,6 +33,8 @@ from torch_geometric.datasets import MoleculeNet
 
 mlflow.pytorch.autolog()
 
+torch.set_num_threads(4)
+
 def map_scalar_to_range(arr, scalar):
     # Find the minimum and maximum values in the array
     arr_min = np.min(arr)
