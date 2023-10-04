@@ -20,7 +20,7 @@ import networkx as nx
 from torch_geometric.utils.convert import to_networkx
 from torch.nn import Linear
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, TopKPooling, global_mean_pool, summary
+from torch_geometric.nn import GCNConv, TopKPooling, global_mean_pool, summary, GATConv
 from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp , global_add_pool as gadd
 from torch_geometric.nn import SAGPooling, ASAPooling
 import mlflow
@@ -386,7 +386,7 @@ loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
         k=1
         plt.clf()"""
 
-#-----------------------------------------GNN Model---------------------------------------
+#-----------------------------------------GCN Model---------------------------------------
 embedding_size = 64#90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
@@ -463,8 +463,61 @@ class GCN(torch.nn.Module):
         #out = F.softmax(self.out(hidden), dim=1)
 
         return out, hidden
+    
+#-----------------------------------------GATConv Model---------------------------------------
+embedding_size = 32#90#64#32
+num_features= Data_list[0].x.shape[1]
+num_output=1#10 # 1:regression 1:clasification: cross entropy
+class GAT(torch.nn.Module):
+    def __init__(self):
+        # Init parent
+        super(GAT, self).__init__()
+        torch.manual_seed(42)
 
-model = GCN()
+        # GCN layers
+        self.initial_conv = GATConv(num_features, embedding_size,heads=4)
+        self.conv1 = GATConv(embedding_size * 4, embedding_size, heads=4)
+        self.conv2 = GATConv(embedding_size * 4, embedding_size, heads=4)
+        self.conv3 = GATConv(embedding_size * 4, embedding_size, heads=4)
+        #self.conv4 = GCNConv(embedding_size, embedding_size)
+        #self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
+        #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
+        #self.TopKPooling = TopKPooling(embedding_size, ratio=0.5)
+
+        # Output layer
+        self.out = Linear(embedding_size*3, num_output)
+        #self.out = Linear(embedding_size*6, num_output)
+
+    def forward(self, x, edge_index, batch_index):
+        # First Conv layer
+        hidden = self.initial_conv(x, edge_index)
+        #hidden = F.relu(hidden)
+        hidden = F.tanh(hidden)
+
+        # Other Conv layers
+        hidden = self.conv1(hidden, edge_index)
+        hidden = F.tanh(hidden)
+        #hidden = F.relu(hidden)
+        hidden = self.conv2(hidden, edge_index)
+        #hidden = F.relu(hidden)
+        hidden = F.tanh(hidden)
+        hidden = self.conv3(hidden, edge_index)
+        #hidden = F.relu(hidden)
+        hidden = F.tanh(hidden)
+
+        #avergae over all 4 heads
+        hidden= torch.mean(hidden.view(-1, 4, embedding_size), dim=1) #4: num heads
+
+        hidden = torch.cat([gmp(hidden, batch_index),
+                            gap(hidden, batch_index),
+                            gadd(hidden, batch_index)], dim=1)
+        out = self.out(hidden)   #:for regression
+
+        return out, hidden
+
+#-----------------model----------------------------
+#model = GCN()
+model = GAT()
 # Specify the file path where you saved the model.
 #model_path = 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
