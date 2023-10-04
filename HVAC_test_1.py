@@ -21,7 +21,8 @@ from torch_geometric.utils.convert import to_networkx
 from torch.nn import Linear
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, TopKPooling, global_mean_pool, summary
-from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
+from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp , global_add_pool as gadd
+from torch_geometric.nn import SAGPooling, ASAPooling
 import mlflow
 import random
 logger = getLogger(__name__)
@@ -372,11 +373,11 @@ loader = DataLoader(Data_list_shuffled[:int(data_size * 0.8)],
 loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
 
-for batch in loader:
+"""for batch in loader:
        print(batch.x.float())
        print(batch.edge_index)
        print(batch.batch)
-       print(batch.y)
+       print(batch.y)"""
 """for i in np.arange(13):
         g =to_networkx(Data_list[i], to_undirected=True)
         #nx.draw(g)
@@ -400,10 +401,14 @@ class GCN(torch.nn.Module):
         self.conv1 = GCNConv(embedding_size, embedding_size)
         self.conv2 = GCNConv(embedding_size, embedding_size)
         self.conv3 = GCNConv(embedding_size, embedding_size)
-        self.conv4 = GCNConv(embedding_size, embedding_size)
+        #self.conv4 = GCNConv(embedding_size, embedding_size)
+        self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
+        #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
+        self.TopKPooling = TopKPooling(embedding_size, ratio=0.5)
 
         # Output layer
-        self.out = Linear(embedding_size*2, num_output)
+        #self.out = Linear(embedding_size*2, num_output)
+        self.out = Linear(embedding_size*6, num_output)
 
     def forward(self, x, edge_index, batch_index):
         # First Conv layer
@@ -423,15 +428,32 @@ class GCN(torch.nn.Module):
         hidden = F.tanh(hidden)
 
         #-------------levrel 4-----------------------
-        hidden = self.conv4(hidden, edge_index)
-        hidden = F.tanh(hidden)
+        #hidden = self.conv4(hidden, edge_index)
+        #hidden = F.tanh(hidden)
 
+        """hidden, edge_index, _, batch_index, _, _ =self.SAGPooling(hidden,edge_index,batch=batch_index)
         # Global Pooling (stack different aggregations)
         hidden = torch.cat([gmp(hidden, batch_index),
-                            gap(hidden, batch_index)], dim=1)
+                            gap(hidden, batch_index)], dim=1)"""
+        
+        # Apply SAGPooling
+        x_sag, edge_index_sag, _, batch_index_sag, _, _ = self.SAGPooling(hidden, edge_index, batch=batch_index)
+
+        # Apply TopKPooling
+        x_topk, edge_index_topk, _, batch_index_topk, _, _ = self.TopKPooling(hidden, edge_index, batch=batch_index)
+
+        # Apply ASAPooling
+        #x_asa, edge_index_asa, _, batch_index_asa, _, _ = self.ASAPooling(hidden, edge_index, batch=batch_index)
+
+        # Concatenate the output of both pooling layers
+        #hidden = torch.cat([gmp(hidden, batch_index),
+        #                    gap(hidden, batch_index)], dim=1)
+        x = torch.cat([gmp(x_sag, batch_index_sag), gap(x_sag, batch_index_sag), gadd(x_sag, batch_index_sag),
+                       gmp(x_topk, batch_index_topk), gap(x_topk, batch_index_topk), gadd(x_topk, batch_index_topk)], dim=1)
 
         # Apply a final (linear) classifier.
-        out = self.out(hidden)   #:for regression
+        #out = self.out(hidden)   #:for regression
+        out = self.out(x)
 
         #hidden = hidden.relu()
         #out = F.dropout(out, p=0.5, training=self.training)
@@ -484,6 +506,7 @@ plt.close(fig)"""
 loss_fn = torch.nn.MSELoss() # torch.nn.CrossEntropyLoss() # torch.nn.MSELoss() $ classifican/ regression
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0007)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model = model.to(device)
 def train():
     # Enumerate over the data
     for batch in loader:
