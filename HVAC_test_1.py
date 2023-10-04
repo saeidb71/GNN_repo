@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, TopKPooling, global_mean_pool, summary
 from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 import mlflow
-
+import random
 logger = getLogger(__name__)
 logger.addHandler(StreamHandler())
 logger.setLevel(INFO)
@@ -259,50 +259,50 @@ edge_list_dict[12] = torch.tensor([ # Create an edge list for a graph with 4 nod
 node_features_list_dict_3={}
 for i in np.arange(len(distrbPop_3)):
         node_features_list_dict_3[i] = torch.tensor([
-                            [0.0, 0.0, 1.0], # Features of Node 0
-                            [distrbPop_3[i][0]/np.sum(distrbPop_3[i]),distrbPop_3[i][0]/1000.0, 0.0], # Features of Node 1
-                            [distrbPop_3[i][1]/np.sum(distrbPop_3[i]),distrbPop_3[i][1]/1000.0, 0.0], # Features of Node 2
-                            [distrbPop_3[i][2]/np.sum(distrbPop_3[i]),distrbPop_3[i][2]/1000.0, 0.0], # Features of Node 3
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node 0
+                            [0.0, distrbPop_3[i][0]/np.sum(distrbPop_3[i]),distrbPop_3[i][0]/1000.0, 0.0], # Features of Node 1
+                            [0.0, distrbPop_3[i][1]/np.sum(distrbPop_3[i]),distrbPop_3[i][1]/1000.0, 0.0], # Features of Node 2
+                            [0.0, distrbPop_3[i][2]/np.sum(distrbPop_3[i]),distrbPop_3[i][2]/1000.0, 0.0], # Features of Node 3
                             ],dtype=torch.float32)#torch.long)
         
 node_features_list_dict_4={}
 for i in np.arange(len(distrbPop_4)):
         node_features_list_dict_4[i] = torch.tensor([
-                            [0.0, 0.0, 1.0], # Features of Node 0
-                            [distrbPop_4[i][0]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][0]/1000.0, 0.0], # Features of Node 1
-                            [distrbPop_4[i][1]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][1]/1000.0, 0.0], # Features of Node 2
-                            [distrbPop_4[i][2]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][2]/1000.0, 0.0], # Features of Node 3
-                            [distrbPop_4[i][3]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][3]/1000.0, 0.0], # Features of Node 4
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node 0
+                            [0.0, distrbPop_4[i][0]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][0]/1000.0, 0.0], # Features of Node 1
+                            [0.0, distrbPop_4[i][1]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][1]/1000.0, 0.0], # Features of Node 2
+                            [0.0, distrbPop_4[i][2]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][2]/1000.0, 0.0], # Features of Node 3
+                            [0.0, distrbPop_4[i][3]/np.sum(distrbPop_4[i]) ,distrbPop_4[i][3]/1000.0, 0.0], # Features of Node 4
                             ],dtype=torch.float32)#torch.long)
         
 node_features_list_dict_5={}
 for i in np.arange(len(distrbPop_5)):
         node_features_list_dict_5[i] = torch.tensor([
-                            [0.0, 0.0, 1.0], # Features of Node 0
-                            [distrbPop_5[i][0]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][0]/1000.0, 0.0], # Features of Node 1
-                            [distrbPop_5[i][1]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][1]/1000.0, 0.0], # Features of Node 2
-                            [distrbPop_5[i][2]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][2]/1000.0, 0.0], # Features of Node 3
-                            [distrbPop_5[i][3]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][3]/1000.0, 0.0], # Features of Node 4
-                            [distrbPop_5[i][4]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][4]/1000.0, 0.0], # Features of Node 5
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node 0
+                            [0.0, distrbPop_5[i][0]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][0]/1000.0, 0.0], # Features of Node 1
+                            [0.0, distrbPop_5[i][1]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][1]/1000.0, 0.0], # Features of Node 2
+                            [0.0, distrbPop_5[i][2]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][2]/1000.0, 0.0], # Features of Node 3
+                            [0.0, distrbPop_5[i][3]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][3]/1000.0, 0.0], # Features of Node 4
+                            [0.0, distrbPop_5[i][4]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][4]/1000.0, 0.0], # Features of Node 5
                             ],dtype=torch.float32)#torch.long)
         
 node_features_list_dict_3_multy={}
 for i in np.arange(len(distrb_arrays_multi_3)):
         node_features_list_dict_3_multy[i] = torch.tensor([
-                            [distrb_arrays_multi_3[i][0]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][0]/1000.0, 0.0], # Features of Node -2+2--> junction
-                            [0.0, 0.0, 1.0], # Features of Node -1+2 ---> tank
-                            [distrb_arrays_multi_3[i][1]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][1]/1000.0, 0.0], # Features of Node 0+2
-                            [distrb_arrays_multi_3[i][2]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][2]/1000.0, 0.0], # Features of Node 1+2
+                            [1.0, distrb_arrays_multi_3[i][0]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][0]/1000.0, 0.0], # Features of Node -2+2--> junction
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node -1+2 ---> tank
+                            [0.0, distrb_arrays_multi_3[i][1]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][1]/1000.0, 0.0], # Features of Node 0+2
+                            [0.0, distrb_arrays_multi_3[i][2]/np.sum(distrb_arrays_multi_3[i]),distrb_arrays_multi_3[i][2]/1000.0, 0.0], # Features of Node 1+2
                             ],dtype=torch.float32)#torch.long)
         
 node_features_list_dict_4_multy={}
 for i in np.arange(len(distrb_arrays_multi_4)):
         node_features_list_dict_4_multy[i] = torch.tensor([
-                            [distrb_arrays_multi_4[i][0]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][0]/1000.0, 0.0], # Features of Node -2+2--> junction
-                            [0.0, 0.0, 1.0], # Features of Node -1+2 ---> tank
-                            [distrb_arrays_multi_4[i][1]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][1]/1000.0, 0.0], # Features of Node 0+2
-                            [distrb_arrays_multi_4[i][2]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][2]/1000.0, 0.0], # Features of Node 1+2
-                            [distrb_arrays_multi_4[i][3]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][3]/1000.0, 0.0], # Features of Node 2+2
+                            [1.0, distrb_arrays_multi_4[i][0]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][0]/1000.0, 0.0], # Features of Node -2+2--> junction
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node -1+2 ---> tank
+                            [0.0, distrb_arrays_multi_4[i][1]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][1]/1000.0, 0.0], # Features of Node 0+2
+                            [0.0, distrb_arrays_multi_4[i][2]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][2]/1000.0, 0.0], # Features of Node 1+2
+                            [0.0, distrb_arrays_multi_4[i][3]/np.sum(distrb_arrays_multi_4[i]),distrb_arrays_multi_4[i][3]/1000.0, 0.0], # Features of Node 2+2
                             ],dtype=torch.float32)#torch.long)
         
 """# 1 Weight for each edge 
@@ -356,10 +356,18 @@ for i in np.arange(len(distrb_arrays_multi_4)):
 #-----------------------------------------Batch Loader---------------------------------------
 
 NUM_GRAPHS_PER_BATCH = 50#64
+
+#--!!!!!!!!!!!!!!!!!modified!!!!!!!!!!!!!!!!!!!
+#Data_list=Data_list[0:35299] #only singel split cases
+#Data_list=Data_list[35299:] #only multi split cases
+
 data_size = len(Data_list)
-loader = DataLoader(Data_list[:int(data_size * 0.8)],
+random.seed(42)
+# Shuffle the list in place using the seeded random generator
+Data_list_shuffled= random.sample(Data_list, len(Data_list))
+loader = DataLoader(Data_list_shuffled[:int(data_size * 0.8)],
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
-loader_test = DataLoader(Data_list[int(data_size * 0.8):],
+loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
 
 for batch in loader:
@@ -376,7 +384,7 @@ for batch in loader:
         plt.clf()"""
 
 #-----------------------------------------GNN Model---------------------------------------
-embedding_size = 64#32
+embedding_size = 90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
 class GCN(torch.nn.Module):
@@ -433,9 +441,9 @@ class GCN(torch.nn.Module):
 
 model = GCN()
 # Specify the file path where you saved the model.
-model_path = 'trained_model_1.pth'
+#model_path = 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-model.load_state_dict(torch.load(model_path))
+#model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
