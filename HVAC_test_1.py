@@ -387,7 +387,7 @@ loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
         plt.clf()"""
 
 #-----------------------------------------GNN Model---------------------------------------
-embedding_size = 16#90#64#32
+embedding_size = 64#90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
 class GCN(torch.nn.Module):
@@ -402,13 +402,13 @@ class GCN(torch.nn.Module):
         self.conv2 = GCNConv(embedding_size, embedding_size)
         self.conv3 = GCNConv(embedding_size, embedding_size)
         #self.conv4 = GCNConv(embedding_size, embedding_size)
-        self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
+        #self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
         #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
-        self.TopKPooling = TopKPooling(embedding_size, ratio=0.5)
+        #self.TopKPooling = TopKPooling(embedding_size, ratio=0.5)
 
         # Output layer
-        #self.out = Linear(embedding_size*2, num_output)
-        self.out = Linear(embedding_size*6, num_output)
+        self.out = Linear(embedding_size*3, num_output)
+        #self.out = Linear(embedding_size*6, num_output)
 
     def forward(self, x, edge_index, batch_index):
         # First Conv layer
@@ -437,23 +437,24 @@ class GCN(torch.nn.Module):
                             gap(hidden, batch_index)], dim=1)"""
         
         # Apply SAGPooling
-        x_sag, edge_index_sag, _, batch_index_sag, _, _ = self.SAGPooling(hidden, edge_index, batch=batch_index)
+        #x_sag, edge_index_sag, _, batch_index_sag, _, _ = self.SAGPooling(hidden, edge_index, batch=batch_index)
 
         # Apply TopKPooling
-        x_topk, edge_index_topk, _, batch_index_topk, _, _ = self.TopKPooling(hidden, edge_index, batch=batch_index)
+        #x_topk, edge_index_topk, _, batch_index_topk, _, _ = self.TopKPooling(hidden, edge_index, batch=batch_index)
 
         # Apply ASAPooling
         #x_asa, edge_index_asa, _, batch_index_asa, _, _ = self.ASAPooling(hidden, edge_index, batch=batch_index)
 
         # Concatenate the output of both pooling layers
-        #hidden = torch.cat([gmp(hidden, batch_index),
-        #                    gap(hidden, batch_index)], dim=1)
-        x = torch.cat([gmp(x_sag, batch_index_sag), gap(x_sag, batch_index_sag), gadd(x_sag, batch_index_sag),
-                       gmp(x_topk, batch_index_topk), gap(x_topk, batch_index_topk), gadd(x_topk, batch_index_topk)], dim=1)
+        hidden = torch.cat([gmp(hidden, batch_index),
+                            gap(hidden, batch_index),
+                            gadd(hidden, batch_index)], dim=1)
+        #x = torch.cat([gmp(x_sag, batch_index_sag), gap(x_sag, batch_index_sag), gadd(x_sag, batch_index_sag),
+        #               gmp(x_topk, batch_index_topk), gap(x_topk, batch_index_topk), gadd(x_topk, batch_index_topk)], dim=1)
 
         # Apply a final (linear) classifier.
-        #out = self.out(hidden)   #:for regression
-        out = self.out(x)
+        out = self.out(hidden)   #:for regression
+        #out = self.out(x)
 
         #hidden = hidden.relu()
         #out = F.dropout(out, p=0.5, training=self.training)
