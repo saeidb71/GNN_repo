@@ -33,7 +33,7 @@ from torch_geometric.datasets import MoleculeNet
 
 mlflow.pytorch.autolog()
 
-torch.set_num_threads(4)
+#torch.set_num_threads(60)
 
 def map_scalar_to_range(arr, scalar):
     # Find the minimum and maximum values in the array
@@ -386,7 +386,7 @@ for batch in loader:
         plt.clf()"""
 
 #-----------------------------------------GNN Model---------------------------------------
-embedding_size = 90#64#32
+embedding_size = 16#90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
 class GCN(torch.nn.Module):
@@ -773,6 +773,10 @@ ax.set_ylabel('$\mathrm{real-y:3 multi}$', fontsize=15)
 fig.savefig('end_result_3_multi_all.png')
 mlflow.log_artifact("end_result_3_multi_all.png")
 
+print(np.sum(np.argmax(t_real_3_multi_gropuped,0)==np.argmax(t_pred_3_multi_gropuped,0))/len(unique_dist_group_multi_3))
+mlflow.log_param("label_accuracy_3_multi", np.sum(np.argmax(t_real_3_multi_gropuped,0)==np.argmax(t_pred_3_multi_gropuped,0))/len(unique_dist_group_multi_3))
+
+
 #-------multi 4 multi, fora each disturbance (out of 20) we have 88 diffrent calssess--> you can see branches usjg edges--------
 unique_sets_multi_4 = {}
 for idx, arr in enumerate(distrb_arrays_multi_4):
@@ -827,7 +831,7 @@ mlflow.log_artifact("all_pop_4_multi_labels_pred.png")
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o-')     
 fig.savefig('all_pop_3_multi_labels_pred_2.png')
-mlflow.log_artifact("all_pop_3_multi_labels_pred_2.png")
+mlflow.log_artifact("all_pop_4_multi_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_4)):
@@ -837,3 +841,6 @@ ax.set_xlabel('$\mathrm{estimate-y:4 multi}$', fontsize=15)
 ax.set_ylabel('$\mathrm{real-y:4 multi}$', fontsize=15)
 fig.savefig('end_result_4_multi_all.png')
 mlflow.log_artifact("end_result_4_multi_all.png")
+
+print(np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
+mlflow.log_param("label_accuracy_4_multi", np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
