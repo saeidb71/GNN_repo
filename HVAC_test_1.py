@@ -31,6 +31,7 @@ logger.setLevel(INFO)
 pytorch_version = f"torch-{torch.__version__}.html"
 import rdkit
 from torch_geometric.datasets import MoleculeNet
+from sklearn.manifold import TSNE
 
 mlflow.pytorch.autolog()
 
@@ -356,6 +357,12 @@ for i in np.arange(len(distrb_arrays_multi_4)):
         #torch.save(Data_list[indx], os.path.join(os.getcwd()+'/Pop3_Dataset/') + f'4_data_multy{indx}.pt')
         indx=indx+1
 
+#list of graphs in nx format
+graphs_list_nx=[]
+for i in np.arange(len(Data_list)):
+     graphs_list_nx.append(to_networkx(Data_list[i], to_undirected=True))
+
+
 #-----------------------------------------Batch Loader---------------------------------------
 
 NUM_GRAPHS_PER_BATCH = 50#64
@@ -463,22 +470,23 @@ class GCN(torch.nn.Module):
         #out = F.softmax(self.out(hidden), dim=1)
 
         return out, hidden
-    
+   
 #-----------------------------------------GATConv Model---------------------------------------
-embedding_size = 32#90#64#32
+embedding_size = 32#32#32-->saved GAT
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
+numHeads=4
 class GAT(torch.nn.Module):
     def __init__(self):
         # Init parent
         super(GAT, self).__init__()
-        torch.manual_seed(42)
+        torch.manual_seed(41) #41
 
         # GCN layers
-        self.initial_conv = GATConv(num_features, embedding_size,heads=4)
-        self.conv1 = GATConv(embedding_size * 4, embedding_size, heads=4)
-        self.conv2 = GATConv(embedding_size * 4, embedding_size, heads=4)
-        self.conv3 = GATConv(embedding_size * 4, embedding_size, heads=4)
+        self.initial_conv = GATConv(num_features, embedding_size,heads=numHeads)
+        self.conv1 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
+        self.conv2 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
+        self.conv3 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
         #self.conv4 = GCNConv(embedding_size, embedding_size)
         #self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
         #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
@@ -506,7 +514,7 @@ class GAT(torch.nn.Module):
         hidden = F.tanh(hidden)
 
         #avergae over all 4 heads
-        hidden= torch.mean(hidden.view(-1, 4, embedding_size), dim=1) #4: num heads
+        hidden= torch.mean(hidden.view(-1, numHeads, embedding_size), dim=1) #4: num heads
 
         hidden = torch.cat([gmp(hidden, batch_index),
                             gap(hidden, batch_index),
@@ -519,9 +527,9 @@ class GAT(torch.nn.Module):
 #model = GCN()
 model = GAT()
 # Specify the file path where you saved the model.
-#model_path = 'trained_model_1.pth'
+model_path ='trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-#model.load_state_dict(torch.load(model_path))
+model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -578,7 +586,7 @@ def train():
       optimizer.step()
     return loss, embedding
 
-print("Starting training...")
+"""print("Starting training...")
 
 with mlflow.start_run():
     mlflow.log_param("embedding_size", embedding_size)
@@ -588,6 +596,8 @@ with mlflow.start_run():
         loss, h = train()
         losses.append(loss)
         if epoch % 100 == 0:
+            model_path = 'trained_model_1.pth'
+            torch.save(model.state_dict(), model_path)
             print(f"Epoch {epoch} | Train Loss {loss}")
             mlflow.log_metric("train_loss", loss.item())
 
@@ -605,7 +615,7 @@ with mlflow.start_run():
     mlflow.pytorch.log_model(model, "models")
 
 model_path = 'trained_model_1.pth'
-torch.save(model.state_dict(), model_path)
+torch.save(model.state_dict(), model_path)"""
 
 
 #-----------------------------------------Test Learned Model---------------------------------------
@@ -623,6 +633,53 @@ with torch.no_grad():
 fig.savefig('test_data_learned_model.png')
 mlflow.log_artifact("test_data_learned_model.png")
 
+
+# embedding
+"""model.eval()
+all_node_embeddings = []
+with torch.no_grad():
+    for i in np.arange(len(Data_list)):
+        pred,embed=model(Data_list[i].x.float(), Data_list[i].edge_index, Data_list[i].batch)
+        all_node_embeddings.append(embed)
+all_node_embeddings = torch.cat(all_node_embeddings, dim=0).numpy()
+#tsne = TSNE(n_components=2, random_state=42)
+#graph_embedding_2d = tsne.fit_transform(all_node_embeddings)
+#tsne_3d = TSNE(n_components=3, random_state=42)
+#graph_embedding_3d = tsne_3d.fit_transform(all_node_embeddings)
+
+classess_graphs=np.zeros(len(Data_list),dtype=int)
+for i in np.arange(len(Data_list)):
+     if i<len(distrbPop_3)* num_comp_3:
+          classess_graphs[i]=0
+     elif i<len(distrbPop_3)* num_comp_3 + len(distrbPop_4)*num_comp_4:
+          classess_graphs[i]=1
+     elif i<len(distrbPop_3)* num_comp_3 + len(distrbPop_4)*num_comp_4 + len(distrbPop_5)*num_comp_5:
+          classess_graphs[i]=2
+     elif i<len(distrbPop_3)* num_comp_3 + len(distrbPop_4)*num_comp_4 + len(distrbPop_5)*num_comp_5 + num_comp_3_multi:
+          classess_graphs[i]=3
+     else:
+          classess_graphs[i]=4
+
+# Define a color map for the classes with five distinct colors
+colors = ['r', 'g', 'b', 'c', 'm']  # You can customize these colors
+# Map class labels to colors
+class_colors = [colors[i] for i in classess_graphs]
+# Create a figure and axes
+fig, ax = plt.subplots()
+# Create a scatter plot on the axes
+scatter = ax.scatter(graph_embedding_2d[:, 0], graph_embedding_2d[:, 1], c=class_colors)#, label=classess_graphs)
+# Create a custom legend for the defined five classes
+custom_legend = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=f'Class {i}') for i, color in enumerate(colors)]
+# Customize the plot (e.g., add labels, title, legend, etc.)
+ax.set_xlabel('X-axis')
+ax.set_ylabel('Y-axis')
+ax.set_title('Node Embeddings Visualization')
+#ax.legend()
+ax.legend(handles=custom_legend, title='Legend', loc='upper right')  # Include the custom legend
+plt.savefig('graph_embedding.png')
+mlflow.log_artifact("graph_embedding.png")"""
+
+
 t_pred_3=np.zeros((num_comp_3,len(distrbPop_3)))
 pred_best_class_3=np.zeros(len(distrbPop_3),dtype=int)
 group_num=0
@@ -637,10 +694,13 @@ with torch.no_grad():
           group_num=group_num+1
 
 pred_3_best=np.zeros(len(distrbPop_3))
+num_clasess_btter_than_best_pred_3_single=np.zeros(len(distrbPop_3))
 pred_3_best_rel_val=np.zeros(len(distrbPop_3))
 for g in np.arange(len(distrbPop_3)):
     y_val_all=t_allPop_3[:,g]
     y_val_pred_best=t_allPop_3[pred_best_class_3[g],g]
+    # Count the elements greater than 0.6
+    num_clasess_btter_than_best_pred_3_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_3_best[g]=y_val_pred_best
     pred_3_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
 
@@ -657,6 +717,12 @@ fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_3_best_rel_val,'o-')     
 fig.savefig('all_pop_3_labels_pred_2.png')
 mlflow.log_artifact("all_pop_3_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_3_single,'o-')    
+ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
+fig.savefig('num_clasess_btter_than_best_pred_3_single.png')
+mlflow.log_artifact("num_clasess_btter_than_best_pred_3_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_3)):
@@ -683,10 +749,12 @@ with torch.no_grad():
 
 pred_4_best=np.zeros(len(distrbPop_4))
 pred_4_best_rel_val=np.zeros(len(distrbPop_4))
+num_clasess_btter_than_best_pred_4_single=np.zeros(len(distrbPop_4))
 for g in np.arange(len(distrbPop_4)):
     y_val_all=t_allPop_4[:,g]
     y_val_pred_best=t_allPop_4[pred_best_class_4[g],g]
     pred_4_best[g]=y_val_pred_best
+    num_clasess_btter_than_best_pred_4_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_4_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -702,6 +770,12 @@ fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_4_best_rel_val,'o-')     
 fig.savefig('all_pop_4_labels_pred_2.png')
 mlflow.log_artifact("all_pop_4_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_4_single,'o-')    
+ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
+fig.savefig('num_clasess_btter_than_best_pred_4_single.png')
+mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_4)):
@@ -728,10 +802,12 @@ with torch.no_grad():
 
 pred_5_best=np.zeros(len(distrbPop_5))
 pred_5_best_rel_val=np.zeros(len(distrbPop_5))
+num_clasess_btter_than_best_pred_5_single=np.zeros(len(distrbPop_5))
 for g in np.arange(len(distrbPop_5)):
     y_val_all=t_allPop_5[:,g]
     y_val_pred_best=t_allPop_5[pred_best_class_5[g],g]
     pred_5_best[g]=y_val_pred_best
+    num_clasess_btter_than_best_pred_5_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_5_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -747,6 +823,12 @@ fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_5_best_rel_val,'o-')     
 fig.savefig('all_pop_5_labels_pred_2.png')
 mlflow.log_artifact("all_pop_5_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_5_single,'o-')   
+ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
+fig.savefig('num_clasess_btter_than_best_pred_5_single.png')
+mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_5)):
@@ -826,10 +908,12 @@ for i in np.arange(len(unique_dist_group_multi_3)):
      t_pred_3_multi_gropuped_best[i]=t_real_3_multi_gropuped[t_pred_3_multi_gropuped_best_index[i],i]
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+num_clasess_btter_than_best_pred_3_multi=np.zeros(len(unique_dist_group_multi_3))
 for g in np.arange(len(unique_dist_group_multi_3)):
      y_val_all=t_real_3_multi_gropuped[:,g]
      x_val=g*np.ones(len(y_val_all))
      y_val_pred_best=t_pred_3_multi_gropuped_best[g]
+     num_clasess_btter_than_best_pred_3_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_3_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_3)),t_pred_3_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
@@ -840,6 +924,12 @@ fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_3_multi_gropuped_best_rel_val,'o-')     
 fig.savefig('all_pop_3_multi_labels_pred_2.png')
 mlflow.log_artifact("all_pop_3_multi_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_3_multi,'o-')   
+ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
+fig.savefig('num_clasess_btter_than_best_pred_3_multi.png')
+mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_3)):
@@ -894,11 +984,13 @@ t_pred_4_multi_gropuped_best_rel_val=np.zeros(len(unique_dist_group_multi_4))
 for i in np.arange(len(unique_dist_group_multi_4)):
      t_pred_4_multi_gropuped_best[i]=t_real_4_multi_gropuped[t_pred_4_multi_gropuped_best_index[i],i]
 
+num_clasess_btter_than_best_pred_4_multi=np.zeros(len(unique_dist_group_multi_4))
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(unique_dist_group_multi_4)):
      y_val_all=t_real_4_multi_gropuped[:,g]
      x_val=g*np.ones(len(y_val_all))
      y_val_pred_best=t_pred_4_multi_gropuped_best[g]
+     num_clasess_btter_than_best_pred_4_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_4_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_4)),t_pred_4_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
@@ -907,8 +999,15 @@ mlflow.log_artifact("all_pop_4_multi_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o-')     
-fig.savefig('all_pop_3_multi_labels_pred_2.png')
+fig.savefig('all_pop_4_multi_labels_pred_2.png')
 mlflow.log_artifact("all_pop_4_multi_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_4_multi,'o-')    
+ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
+fig.savefig('num_clasess_btter_than_best_pred_4_multi.png')
+mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")
+
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_4)):
@@ -921,3 +1020,16 @@ mlflow.log_artifact("end_result_4_multi_all.png")
 
 print(np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
 mlflow.log_param("label_accuracy_4_multi", np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
+
+print(f"pred_3_best_rel_val_mean: {np.mean(pred_3_best_rel_val)}")
+print(f"pred_4_best_rel_val_mean: {np.mean(pred_4_best_rel_val)}")
+print(f"pred_5_best_rel_val_mean: {np.mean(pred_5_best_rel_val)}")
+print(f"t_pred_3_multi_gropuped_best_rel_val_mean: {np.mean(t_pred_3_multi_gropuped_best_rel_val)}")
+print(f"t_pred_4_multi_gropuped_best_rel_val_mean: {np.mean(t_pred_4_multi_gropuped_best_rel_val)}")
+
+mlflow.log_param("pred_3_best_rel_val_mean", np.mean(pred_3_best_rel_val))
+mlflow.log_param("pred_4_best_rel_val_mean", np.mean(pred_4_best_rel_val))
+mlflow.log_param("pred_5_best_rel_val_mean", np.mean(pred_5_best_rel_val))
+mlflow.log_param("t_pred_3_multi_gropuped_best_rel_val_mean", np.mean(t_pred_3_multi_gropuped_best_rel_val))
+mlflow.log_param("t_pred_4_multi_gropuped_best_rel_val_mean", np.mean(t_pred_4_multi_gropuped_best_rel_val))
+
