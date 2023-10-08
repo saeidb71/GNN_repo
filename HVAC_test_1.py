@@ -32,10 +32,20 @@ pytorch_version = f"torch-{torch.__version__}.html"
 import rdkit
 from torch_geometric.datasets import MoleculeNet
 from sklearn.manifold import TSNE
+from scipy.stats import norm
+
 
 mlflow.pytorch.autolog()
 
 #torch.set_num_threads(60)
+
+seed_value = 42
+random.seed(seed_value)
+
+# Generate 13 distinct colors using the same seed
+def generate_random_color():
+    return "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
 
 def map_scalar_to_range(arr, scalar):
     # Find the minimum and maximum values in the array
@@ -620,30 +630,73 @@ torch.save(model.state_dict(), model_path)"""
 
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
+
+## Test data##
 #test_batch = next(iter(loader_test))
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+all_errors_test=torch.empty(0)  
 with torch.no_grad():
     for batch_test in loader_test:
         batch_test.to(device)
         pred, embed = model(batch_test.x.float(), batch_test.edge_index, batch_test.batch)
-        ax.plot(pred.detach().numpy().flatten(),batch_test.y, '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-    ax.set_xlabel('$\mathrm{estimate-y: test}$', fontsize=15)
-    ax.set_ylabel('$\mathrm{real-y: test}$', fontsize=15)
-fig.savefig('test_data_learned_model.png')
+        ax.plot(batch_test.y,pred.detach().numpy().flatten(), 'o',
+            linewidth=2, markersize=3, markeredgewidth=2,color='r') #markerfacecolor='none'
+        error_test_all=batch_test.y-pred.detach().numpy().flatten()
+        # Append the values to the empty tensor along dimension 0
+        all_errors_test = torch.cat((all_errors_test, error_test_all), dim=0)
+    ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+    ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.plot([10, 150], [10, 150],'--', color='gray', linewidth=2, alpha=1.0)
+mean=np.mean(all_errors_test.numpy())
+std_dev = np.std(all_errors_test.numpy())
+# Display mean and standard deviation on the plot using ax.text()
+ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
+ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
+fig.savefig('test_data_learned_model.png',bbox_inches='tight',dpi=300)
+fig.savefig('test_data_learned_model.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("test_data_learned_model.png")
 
+## Train data##
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+all_errors_train=torch.empty(0)  
+with torch.no_grad():
+    for batch_test in loader:
+        batch_test.to(device)
+        pred, embed = model(batch_test.x.float(), batch_test.edge_index, batch_test.batch)
+        ax.plot(batch_test.y,pred.detach().numpy().flatten(), 'o',
+            linewidth=2, markersize=3, markeredgewidth=2,color='r') #markerfacecolor='none'
+        error_test_all=batch_test.y-pred.detach().numpy().flatten()
+        # Append the values to the empty tensor along dimension 0
+        all_errors_train = torch.cat((all_errors_train, error_test_all), dim=0)
+    ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+    ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.plot([8, 155], [8, 155],'--', color='gray', linewidth=2, alpha=1.0)
+mean=np.mean(all_errors_train.numpy())
+std_dev = np.std(all_errors_train.numpy())
+# Display mean and standard deviation on the plot using ax.text()
+ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
+ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
+fig.savefig('train_data_learned_model.png',bbox_inches='tight',dpi=300)
+fig.savefig('train_data_learned_model.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("train_data_learned_model.png")
+
+#fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+#x_range = np.linspace(min(error_test_all.numpy()), max(error_test_all.numpy()), 100)
+#pdf = norm.pdf(x_range, mean, std_dev)
+#ax.hist(error_test_all, bins=50, density=True, alpha=0.6, color='g', label='Histogram')
 
 # embedding
-"""model.eval()
+model.eval()
 all_node_embeddings = []
 with torch.no_grad():
     for i in np.arange(len(Data_list)):
         pred,embed=model(Data_list[i].x.float(), Data_list[i].edge_index, Data_list[i].batch)
         all_node_embeddings.append(embed)
 all_node_embeddings = torch.cat(all_node_embeddings, dim=0).numpy()
-#tsne = TSNE(n_components=2, random_state=42)
-#graph_embedding_2d = tsne.fit_transform(all_node_embeddings)
+tsne = TSNE(n_components=2, random_state=42)
+graph_embedding_2d = tsne.fit_transform(all_node_embeddings)
 #tsne_3d = TSNE(n_components=3, random_state=42)
 #graph_embedding_3d = tsne_3d.fit_transform(all_node_embeddings)
 
@@ -662,6 +715,7 @@ for i in np.arange(len(Data_list)):
 
 # Define a color map for the classes with five distinct colors
 colors = ['r', 'g', 'b', 'c', 'm']  # You can customize these colors
+Labels=['Single: 3', 'Single: 4','Single: 5', 'Multi: 3', 'Multi: 4']
 # Map class labels to colors
 class_colors = [colors[i] for i in classess_graphs]
 # Create a figure and axes
@@ -669,15 +723,27 @@ fig, ax = plt.subplots()
 # Create a scatter plot on the axes
 scatter = ax.scatter(graph_embedding_2d[:, 0], graph_embedding_2d[:, 1], c=class_colors)#, label=classess_graphs)
 # Create a custom legend for the defined five classes
-custom_legend = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=f'Class {i}') for i, color in enumerate(colors)]
+custom_legend = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=Labels[i]) for i, color in enumerate(colors)] #f'Class {i}'
 # Customize the plot (e.g., add labels, title, legend, etc.)
-ax.set_xlabel('X-axis')
-ax.set_ylabel('Y-axis')
-ax.set_title('Node Embeddings Visualization')
+ax.set_xlabel('Embedding 1',fontsize=20)
+ax.set_ylabel('Embedding 2',fontsize=20)
+#ax.set_title('Node Embeddings Visualization')
 #ax.legend()
-ax.legend(handles=custom_legend, title='Legend', loc='upper right')  # Include the custom legend
-plt.savefig('graph_embedding.png')
-mlflow.log_artifact("graph_embedding.png")"""
+ax.legend(handles=custom_legend,loc='upper right')  # Include the custom legend  title='Legend'
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('graph_embedding.png',bbox_inches='tight',dpi=300)
+fig.savefig('graph_embedding.pdf',bbox_inches='tight',dpi=300)
+#plt.savefig('graph_embedding.png')
+mlflow.log_artifact("graph_embedding.png")
+
+"""class_single_3_indx = np.where(classess_graphs == 0)[0]
+fig, ax = plt.subplots()
+generated_colors = [generate_random_color() for _ in range(13)]
+for i in np.arange(13):
+    calss_i_from_class_single_3_indx= class_single_3_indx[i::13+i]
+    class_colors_i_3_single = [class_colors[i] for i in calss_i_from_class_single_3_indx.tolist()]
+    scatter = ax.scatter(graph_embedding_2d[calss_i_from_class_single_3_indx, 0], graph_embedding_2d[calss_i_from_class_single_3_indx, 1], c=generated_colors[i])
+"""
 
 
 t_pred_3=np.zeros((num_comp_3,len(distrbPop_3)))
@@ -706,31 +772,59 @@ for g in np.arange(len(distrbPop_3)):
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_3)):
-     y_val_all=t_allPop_3[:,g]
-     x_val=g*np.ones(len(y_val_all))
-     ax.plot(x_val,y_val_all,'o')
-ax.plot(np.arange(len(distrbPop_3)),pred_3_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
+     if (g%5==0):
+        y_val_all=t_allPop_3[:,g]
+        x_val=g*np.ones(len(y_val_all))
+        ax.plot(x_val,y_val_all,'o')
+indices = np.arange(0, len(distrbPop_3), 5)
+ax.plot(indices,pred_3_best[indices],'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label)
+    for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
+]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('all_pop_3_labels_pred.png')
+fig.savefig('all_pop_3_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(pred_3_best_rel_val,'o-')     
-fig.savefig('all_pop_3_labels_pred_2.png')
+ax.plot(pred_3_best_rel_val,'o')     
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_3_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_3_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(num_clasess_btter_than_best_pred_3_single,'o-')    
-ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
-fig.savefig('num_clasess_btter_than_best_pred_3_single.png')
+ax.plot(num_clasess_btter_than_best_pred_3_single-1,'o')    
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('num_clasess_btter_than_best_pred_3_single.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_3_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_3_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_3)):
-     ax.plot(t_pred_3[:,i],t_allPop_3[:,i], '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-ax.set_xlabel('$\mathrm{estimate-y:3}$', fontsize=15)
-ax.set_ylabel('$\mathrm{real-y:3}$', fontsize=15)
-fig.savefig('end_result_3_all.png')
+     ax.plot(t_pred_3[:,i],t_allPop_3[:,i], 'o',
+            linewidth=2, markersize=3, markeredgewidth=2, color='r') # markerfacecolor='none'
+ax.plot([8, 155], [8, 155],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_3_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_3_all.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("end_result_3_all.png")
 
 last3_indx=indcx
@@ -759,31 +853,61 @@ for g in np.arange(len(distrbPop_4)):
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_4)):
-     y_val_all=t_allPop_4[:,g]
-     x_val=g*np.ones(len(y_val_all))
-     ax.plot(x_val,y_val_all,'o')
-ax.plot(np.arange(len(distrbPop_4)),pred_4_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
-fig.savefig('all_pop_4_labels_pred.png')
+     if (g%5==0):
+        y_val_all=t_allPop_4[:,g]
+        x_val=g*np.ones(len(y_val_all))
+        ax.plot(x_val,y_val_all,'o')
+indices = np.arange(0, len(distrbPop_4), 5)
+ax.plot(indices,pred_4_best[indices],'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label)
+    for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
+]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_4_labels_pred.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_4_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(pred_4_best_rel_val,'o-')     
-fig.savefig('all_pop_4_labels_pred_2.png')
+ax.plot(pred_4_best_rel_val,'o')     
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_4_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_4_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(num_clasess_btter_than_best_pred_4_single,'o-')    
-ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
-fig.savefig('num_clasess_btter_than_best_pred_4_single.png')
+ax.plot(num_clasess_btter_than_best_pred_4_single-1,'o')    
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+fig.savefig('num_clasess_btter_than_best_pred_4_single.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_4_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_4)):
-     ax.plot(t_pred_4[:,i],t_allPop_4[:,i], '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-ax.set_xlabel('$\mathrm{estimate-y:4}$', fontsize=15)
-ax.set_ylabel('$\mathrm{real-y:4}$', fontsize=15)
-fig.savefig('end_result_4_all.png')
+     ax.plot(t_pred_4[:,i],t_allPop_4[:,i], 'o',
+            linewidth=2, markersize=8, markeredgewidth=2, color='r')
+ax.plot([8, 110], [8, 110],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_4_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_4_all.pdf',bbox_inches='tight',dpi=300)     
 mlflow.log_artifact("end_result_4_all.png")
 
 last4_indx=indcx
@@ -816,27 +940,54 @@ for g in np.arange(len(distrbPop_5)):
      x_val=g*np.ones(len(y_val_all))
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(distrbPop_5)),pred_5_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
-fig.savefig('all_pop_5_labels_pred.png')
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label)
+    for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
+]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+fig.savefig('all_pop_5_labels_pred.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_5_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_5_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(pred_5_best_rel_val,'o-')     
-fig.savefig('all_pop_5_labels_pred_2.png')
+ax.plot(pred_5_best_rel_val,'o')     
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_5_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_5_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_5_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(num_clasess_btter_than_best_pred_5_single,'o-')   
-ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
-fig.savefig('num_clasess_btter_than_best_pred_5_single.png')
+ax.plot(num_clasess_btter_than_best_pred_5_single-1,'o')   
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+fig.savefig('num_clasess_btter_than_best_pred_5_single.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_5_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_5)):
-     ax.plot(t_pred_5[:,i],t_allPop_5[:,i], '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-ax.set_xlabel('$\mathrm{estimate-y:5}$', fontsize=15)
-ax.set_ylabel('$\mathrm{real-y:5}$', fontsize=15)
-fig.savefig('end_result_5_all.png')
+     ax.plot(t_pred_5[:,i],t_allPop_5[:,i], 'o',
+            linewidth=2, markersize=8, markeredgewidth=2, color='r')
+ax.plot([10, 88], [10, 88],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_5_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_5_all.pdf',bbox_inches='tight',dpi=300)       
 mlflow.log_artifact("end_result_5_all.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -917,27 +1068,54 @@ for g in np.arange(len(unique_dist_group_multi_3)):
      t_pred_3_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_3)),t_pred_3_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
-fig.savefig('all_pop_3_multi_labels_pred.png')
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label)
+    for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
+]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+fig.savefig('all_pop_3_multi_labels_pred.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_3_multi_labels_pred.pdf',bbox_inches='tight',dpi=300)   
 mlflow.log_artifact("all_pop_3_multi_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(t_pred_3_multi_gropuped_best_rel_val,'o-')     
-fig.savefig('all_pop_3_multi_labels_pred_2.png')
+ax.plot(t_pred_3_multi_gropuped_best_rel_val,'o')     
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_3_multi_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_3_multi_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_multi_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(num_clasess_btter_than_best_pred_3_multi,'o-')   
-ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
-fig.savefig('num_clasess_btter_than_best_pred_3_multi.png')
+ax.plot(num_clasess_btter_than_best_pred_3_multi-1,'o')   
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+fig.savefig('num_clasess_btter_than_best_pred_3_multi.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_3_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_3)):
-     ax.plot(t_pred_3_multi_gropuped[:,i],t_real_3_multi_gropuped[:,i], '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-ax.set_xlabel('$\mathrm{estimate-y:3 mutli}$', fontsize=15)
-ax.set_ylabel('$\mathrm{real-y:3 multi}$', fontsize=15)
-fig.savefig('end_result_3_multi_all.png')
+     ax.plot(t_pred_3_multi_gropuped[:,i],t_real_3_multi_gropuped[:,i], 'o',
+            linewidth=2, markersize=8, markeredgewidth=2, color='r')
+ax.plot([10, 142], [10, 142],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_3_multi_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_3_multi_all.pdf',bbox_inches='tight',dpi=300)          
 mlflow.log_artifact("end_result_3_multi_all.png")
 
 print(np.sum(np.argmax(t_real_3_multi_gropuped,0)==np.argmax(t_pred_3_multi_gropuped,0))/len(unique_dist_group_multi_3))
@@ -994,28 +1172,69 @@ for g in np.arange(len(unique_dist_group_multi_4)):
      t_pred_4_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_4)),t_pred_4_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
-fig.savefig('all_pop_4_multi_labels_pred.png')
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label)
+    for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
+]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+fig.savefig('all_pop_4_multi_labels_pred.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_4_multi_labels_pred.pdf',bbox_inches='tight',dpi=300)   
 mlflow.log_artifact("all_pop_4_multi_labels_pred.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o-')     
-fig.savefig('all_pop_4_multi_labels_pred_2.png')
+ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o')   
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('all_pop_4_multi_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_4_multi_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_multi_labels_pred_2.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(num_clasess_btter_than_best_pred_4_multi,'o-')    
-ax.set_title(f'num Graphs: {y_val_all.shape[0]}') 
-fig.savefig('num_clasess_btter_than_best_pred_4_multi.png')
+ax.plot(num_clasess_btter_than_best_pred_4_multi-1,'o')    
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+fig.savefig('num_clasess_btter_than_best_pred_4_multi.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_4_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+data = num_clasess_btter_than_best_pred_4_multi-1  # Assuming this is your data
+bar_width = 0.4  # Adjust the width of the bars as needed
+x_indices = np.arange(len(data))
+bars = ax.bar(x_indices, data, width=bar_width, color='skyblue')
+ax.set_title(f'Num Graphs: {len(data)}', fontsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$', fontsize=20)
+ax.set_ylabel('$g > \hat{g}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xticks(x_indices)
+ax.set_xticklabels(x_indices)
+fig.savefig('num_clasess_btter_than_best_pred_4_multi_bar.png', bbox_inches='tight', dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_4_multi_bar.pdf', bbox_inches='tight', dpi=300)"""
 
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_4)):
-     ax.plot(t_pred_4_multi_gropuped[:,i],t_real_4_multi_gropuped[:,i], '-o',
-            linewidth=2, markersize=8, markerfacecolor='none', markeredgewidth=2)
-ax.set_xlabel('$\mathrm{estimate-y:4 multi}$', fontsize=15)
-ax.set_ylabel('$\mathrm{real-y:4 multi}$', fontsize=15)
-fig.savefig('end_result_4_multi_all.png')
+     ax.plot(t_pred_4_multi_gropuped[:,i],t_real_4_multi_gropuped[:,i], 'o',
+            linewidth=2, markersize=8, markeredgewidth=2, color='r')     
+ax.plot([10, 106], [10, 106],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_4_multi_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_4_multi_all.pdf',bbox_inches='tight',dpi=300)    
 mlflow.log_artifact("end_result_4_multi_all.png")
 
 print(np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
