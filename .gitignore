@@ -5,3 +5,6 @@ esol/
 data/
 Cora/
 
+# Ignore PNG and PDF files
+*.png
+*.pdf
