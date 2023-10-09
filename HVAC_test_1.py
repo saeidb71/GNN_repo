@@ -33,9 +33,35 @@ import rdkit
 from torch_geometric.datasets import MoleculeNet
 from sklearn.manifold import TSNE
 from scipy.stats import norm
+import argparse
 
+# Create an argument parser
+parser = argparse.ArgumentParser(description='HVAC Test Script')
+# Add arguments for "x," "y," and "z"
+parser.add_argument('--embedding_size', type=int, required=True, help='Value of embedding_size')
+parser.add_argument('--numHeads', type=int, required=True, help='Value of numHeads')
+parser.add_argument('--num_layers', type=int, required=True, help='Value of num_layers')
+parser.add_argument('--NUM_GRAPHS_PER_BATCH', type=int, required=True, help='Value of NUM_GRAPHS_PER_BATCH')
+# Parse the command-line arguments
+args = parser.parse_args()
+embedding_size=args.embedding_size
+numHeads=args.numHeads
+num_layers=args.num_layers
+NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH
 
-mlflow.pytorch.autolog()
+#embedding_size=16
+#numHeads=4
+#num_layers=3
+#NUM_GRAPHS_PER_BATCH=50
+
+#python HVAC_test_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 50
+
+print(f"embedding_size: {embedding_size}")
+print(f"numHeads: {numHeads}")
+print(f"num_layers: {num_layers}")
+print(f"NUM_GRAPHS_PER_BATCH: {NUM_GRAPHS_PER_BATCH}")
+
+File_Name=f"embd_{embedding_size}_nHead_{numHeads}_nlayer_{num_layers}_Batch_{NUM_GRAPHS_PER_BATCH}"
 
 #torch.set_num_threads(60)
 
@@ -375,7 +401,7 @@ for i in np.arange(len(Data_list)):
 
 #-----------------------------------------Batch Loader---------------------------------------
 
-NUM_GRAPHS_PER_BATCH = 50#64
+#NUM_GRAPHS_PER_BATCH = 50#64
 
 #--!!!!!!!!!!!!!!!!!modified!!!!!!!!!!!!!!!!!!!
 #Data_list=Data_list[0:35299] #only singel split cases
@@ -404,7 +430,7 @@ loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
         plt.clf()"""
 
 #-----------------------------------------GCN Model---------------------------------------
-embedding_size = 64#90#64#32
+"""embedding_size = 64#90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
 class GCN(torch.nn.Module):
@@ -448,10 +474,10 @@ class GCN(torch.nn.Module):
         #hidden = self.conv4(hidden, edge_index)
         #hidden = F.tanh(hidden)
 
-        """hidden, edge_index, _, batch_index, _, _ =self.SAGPooling(hidden,edge_index,batch=batch_index)
+        #hidden, edge_index, _, batch_index, _, _ =self.SAGPooling(hidden,edge_index,batch=batch_index)
         # Global Pooling (stack different aggregations)
-        hidden = torch.cat([gmp(hidden, batch_index),
-                            gap(hidden, batch_index)], dim=1)"""
+        #hidden = torch.cat([gmp(hidden, batch_index),
+        #                    gap(hidden, batch_index)], dim=1)
         
         # Apply SAGPooling
         #x_sag, edge_index_sag, _, batch_index_sag, _, _ = self.SAGPooling(hidden, edge_index, batch=batch_index)
@@ -479,14 +505,14 @@ class GCN(torch.nn.Module):
         # Output layer : regression
         #out = F.softmax(self.out(hidden), dim=1)
 
-        return out, hidden
+        return out, hidden"""
    
 #-----------------------------------------GATConv Model---------------------------------------
-embedding_size = 16#32#32#32-->saved GAT
+#embedding_size = 16#32#32#32-->saved GAT
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
-numHeads=4 # 4-->saved
-class GAT(torch.nn.Module):
+#numHeads=4 # 4-->saved
+"""class GAT(torch.nn.Module):
     def __init__(self):
         # Init parent
         super(GAT, self).__init__()
@@ -531,11 +557,48 @@ class GAT(torch.nn.Module):
                             gadd(hidden, batch_index)], dim=1)
         out = self.out(hidden)   #:for regression
 
+        return out, hidden"""
+    
+class GAT(torch.nn.Module):
+    def __init__(self, num_layers, num_heads, num_features, embedding_size, num_output):
+        # Init parent
+        super(GAT, self).__init__()
+        torch.manual_seed(41) #41
+
+        # Initialize a list to hold the GATConv layers
+        self.conv_layers = torch.nn.ModuleList()
+        self.conv_layers.append(GATConv(num_features, embedding_size, heads=num_heads))
+
+        # Add additional GATConv layers based on the specified num_layers
+        for _ in range(num_layers - 1):
+            self.conv_layers.append(GATConv(embedding_size * num_heads, embedding_size, heads=num_heads))
+
+        # Output layer
+        self.out = Linear(embedding_size * 3, num_output)
+
+    def forward(self, x, edge_index, batch_index):
+        # Apply the GATConv layers
+        hidden = x
+        for conv_layer in self.conv_layers:
+            hidden = F.tanh(conv_layer(hidden, edge_index))
+
+        # Average over all heads
+        hidden = torch.mean(hidden.view(-1, numHeads, embedding_size), dim=1)
+
+        # Concatenate the pooling results
+        hidden = torch.cat([gmp(hidden, batch_index),
+                            gap(hidden, batch_index),
+                            gadd(hidden, batch_index)], dim=1)
+
+        out = self.out(hidden)  # For regression
+
         return out, hidden
+
 
 #-----------------model----------------------------
 #model = GCN()
-model = GAT()
+#model = GAT()
+model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
 #model_path ='trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
@@ -602,13 +665,15 @@ train_loss_vec_100=[]
 test_loss_vec_100=[]
 losses = []
 with mlflow.start_run():
+    mlflow.set_tag("mlflow.runName", File_Name)
+    mlflow.pytorch.autolog()
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
     for epoch in range(10000):
         loss, h = train()
         losses.append(loss)
         if epoch % 1 == 0:
-            model_path = 'trained_model_1.pth'
+            model_path = f'{File_Name}.pth' #'trained_model_1.pth'
             torch.save(model.state_dict(), model_path)
             print(f"Epoch {epoch} | Train Loss {loss}")
             mlflow.log_metric("train_loss", loss.item())
@@ -628,18 +693,18 @@ with mlflow.start_run():
 
     mlflow.pytorch.log_model(model, "models")
 
-model_path = 'trained_model_1.pth'
+model_path = f'{File_Name}.pth'# 'trained_model_1.pth'
 torch.save(model.state_dict(), model_path)
 
 # File path where you want to save the pickled data
-file_path = 'data.pkl'
+file_path =f'{File_Name}.pkl'# 'data.pkl'
 
 # Serialize and save the object to a file
 data_during_trainig={}
 data_during_trainig['losses']=losses
 data_during_trainig['train_loss_vec_100']=train_loss_vec_100
 data_during_trainig['test_loss_vec_100']=test_loss_vec_100
-with open('Loss_during_trainig.pkl', 'wb') as file:
+with open(file_path, 'wb') as file:
     pkl.dump(data_during_trainig, file)
 
 #-----------------------------------------Test Learned Model---------------------------------------
