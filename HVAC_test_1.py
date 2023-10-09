@@ -482,10 +482,10 @@ class GCN(torch.nn.Module):
         return out, hidden
    
 #-----------------------------------------GATConv Model---------------------------------------
-embedding_size = 32#32#32-->saved GAT
+embedding_size = 16#32#32#32-->saved GAT
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
-numHeads=4
+numHeads=4 # 4-->saved
 class GAT(torch.nn.Module):
     def __init__(self):
         # Init parent
@@ -496,7 +496,7 @@ class GAT(torch.nn.Module):
         self.initial_conv = GATConv(num_features, embedding_size,heads=numHeads)
         self.conv1 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
         self.conv2 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
-        self.conv3 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads)
+        #self.conv3 = GATConv(embedding_size * numHeads, embedding_size, heads=numHeads) #--> usaed fo svaed
         #self.conv4 = GCNConv(embedding_size, embedding_size)
         #self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
         #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
@@ -519,9 +519,9 @@ class GAT(torch.nn.Module):
         hidden = self.conv2(hidden, edge_index)
         #hidden = F.relu(hidden)
         hidden = F.tanh(hidden)
-        hidden = self.conv3(hidden, edge_index)
+        #hidden = self.conv3(hidden, edge_index)
         #hidden = F.relu(hidden)
-        hidden = F.tanh(hidden)
+        #hidden = F.tanh(hidden)
 
         #avergae over all 4 heads
         hidden= torch.mean(hidden.view(-1, numHeads, embedding_size), dim=1) #4: num heads
@@ -537,9 +537,9 @@ class GAT(torch.nn.Module):
 #model = GCN()
 model = GAT()
 # Specify the file path where you saved the model.
-model_path ='trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
+#model_path ='trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-model.load_state_dict(torch.load(model_path))
+#model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -596,20 +596,23 @@ def train():
       optimizer.step()
     return loss, embedding
 
-"""print("Starting training...")
+print("Starting training...")
 
+train_loss_vec_100=[]
+test_loss_vec_100=[]
+losses = []
 with mlflow.start_run():
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
-    losses = []
     for epoch in range(10000):
         loss, h = train()
         losses.append(loss)
-        if epoch % 100 == 0:
+        if epoch % 1 == 0:
             model_path = 'trained_model_1.pth'
             torch.save(model.state_dict(), model_path)
             print(f"Epoch {epoch} | Train Loss {loss}")
             mlflow.log_metric("train_loss", loss.item())
+            train_loss_vec_100.append(loss)
 
             test_loss_avg=[]
             with torch.no_grad():
@@ -619,14 +622,25 @@ with mlflow.start_run():
                     loss_test = loss_fn(pred.flatten(), batch_test.y.float()) 
                     test_loss_avg.append(loss_test)
             avg_totall_loss_test=sum(test_loss_avg) / len(test_loss_avg)
+            test_loss_vec_100.append(avg_totall_loss_test)
             print(f"Epoch {epoch} | Test Loss avg {avg_totall_loss_test}")
             mlflow.log_metric("test_loss", avg_totall_loss_test)
 
     mlflow.pytorch.log_model(model, "models")
 
 model_path = 'trained_model_1.pth'
-torch.save(model.state_dict(), model_path)"""
+torch.save(model.state_dict(), model_path)
 
+# File path where you want to save the pickled data
+file_path = 'data.pkl'
+
+# Serialize and save the object to a file
+data_during_trainig={}
+data_during_trainig['losses']=losses
+data_during_trainig['train_loss_vec_100']=train_loss_vec_100
+data_during_trainig['test_loss_vec_100']=test_loss_vec_100
+with open('Loss_during_trainig.pkl', 'wb') as file:
+    pkl.dump(data_during_trainig, file)
 
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
