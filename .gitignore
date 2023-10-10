@@ -8,3 +8,4 @@ Cora/
 # Ignore PNG and PDF files
 *.png
 *.pdf
+embd_*.pkl
