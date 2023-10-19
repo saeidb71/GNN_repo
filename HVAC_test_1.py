@@ -35,6 +35,7 @@ from sklearn.manifold import TSNE
 from scipy.stats import norm
 import argparse
 
+"""
 # Create an argument parser
 parser = argparse.ArgumentParser(description='HVAC Test Script')
 # Add arguments for "x," "y," and "z"
@@ -47,12 +48,12 @@ args = parser.parse_args()
 embedding_size=args.embedding_size
 numHeads=args.numHeads
 num_layers=args.num_layers
-NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH
+NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH"""
 
-#embedding_size=16
-#numHeads=4
-#num_layers=3
-#NUM_GRAPHS_PER_BATCH=50
+embedding_size=32#32
+numHeads=4
+num_layers=3
+NUM_GRAPHS_PER_BATCH=100#100
 
 #python HVAC_test_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 50
 
@@ -600,9 +601,9 @@ class GAT(torch.nn.Module):
 #model = GAT()
 model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
-#model_path ='trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
+model_path ='embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-#model.load_state_dict(torch.load(model_path))
+model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -659,7 +660,7 @@ def train():
       optimizer.step()
     return loss, embedding
 
-print("Starting training...")
+"""print("Starting training...")
 
 train_loss_vec_100=[]
 test_loss_vec_100=[]
@@ -705,7 +706,7 @@ data_during_trainig['losses']=losses
 data_during_trainig['train_loss_vec_100']=train_loss_vec_100
 data_during_trainig['test_loss_vec_100']=test_loss_vec_100
 with open(file_path, 'wb') as file:
-    pkl.dump(data_during_trainig, file)
+    pkl.dump(data_during_trainig, file)"""
 
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
@@ -880,6 +881,7 @@ ax.plot(pred_3_best_rel_val,'o')
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_3_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_3_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_labels_pred_2.png")
@@ -890,6 +892,7 @@ ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$g > \hat{g}$',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(-0.1, 3.1)
 fig.savefig('num_clasess_btter_than_best_pred_3_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_3_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_3_single.png")
@@ -962,6 +965,7 @@ ax.plot(pred_4_best_rel_val,'o')
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_4_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_4_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_labels_pred_2.png")
@@ -973,6 +977,7 @@ ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$g > \hat{g}$',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_ylim(-0.1, 4.1)
 fig.savefig('num_clasess_btter_than_best_pred_4_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_4_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")
@@ -1042,6 +1047,7 @@ ax.plot(pred_5_best_rel_val,'o')
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_5_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_5_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_5_labels_pred_2.png")
@@ -1053,6 +1059,7 @@ ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$g > \hat{g}$',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_ylim(-0.1, 6.1)
 fig.savefig('num_clasess_btter_than_best_pred_5_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_5_single.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")
@@ -1170,6 +1177,7 @@ ax.plot(t_pred_3_multi_gropuped_best_rel_val,'o')
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_3_multi_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_3_multi_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_multi_labels_pred_2.png")
@@ -1181,6 +1189,7 @@ ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$g > \hat{g}$',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_ylim(-0.1, 1.1)
 fig.savefig('num_clasess_btter_than_best_pred_3_multi.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_3_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")
@@ -1274,6 +1283,7 @@ ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o')
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_4_multi_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_4_multi_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_multi_labels_pred_2.png")
@@ -1285,6 +1295,7 @@ ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$g > \hat{g}$',fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_ylim(-0.1, 5.1)
 fig.savefig('num_clasess_btter_than_best_pred_4_multi.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_4_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")
