@@ -8,5 +8,7 @@ Cora/
 # Ignore PNG and PDF files
 *.png
 *.pdf
+*.pkl
+*.pth
 embd_*.pkl
 embd_16_nHead_4_nlayer_3_Batch_5000.pkl 
