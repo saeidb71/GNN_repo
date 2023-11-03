@@ -39,7 +39,7 @@ import pandas as pd
 
 
 # Create an argument parser
-parser = argparse.ArgumentParser(description='Vehicle Test Script')
+"""parser = argparse.ArgumentParser(description='Vehicle Test Script')
 # Add arguments for "x," "y," and "z"
 parser.add_argument('--embedding_size', type=int, required=True, help='Value of embedding_size')
 parser.add_argument('--numHeads', type=int, required=True, help='Value of numHeads')
@@ -50,12 +50,12 @@ args = parser.parse_args()
 embedding_size=args.embedding_size
 numHeads=args.numHeads
 num_layers=args.num_layers
-NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH
+NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH"""
 
-#embedding_size=32#32
-#numHeads=4
-#num_layers=3
-#NUM_GRAPHS_PER_BATCH=100#100
+embedding_size=16#32
+numHeads=4
+num_layers=3
+NUM_GRAPHS_PER_BATCH=500#100
 
 #python Vehicle_GNN_step_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 500
 
@@ -185,9 +185,9 @@ num_output=1#10 # 1:regression 1:clasification: cross entropy
     
 model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
-model_path ='Vehicle_embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
+model_path = 'Vehicle_embd_16_nHead_4_nlayer_3_Batch_500.pth' # 'Vehicle_embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-#model.load_state_dict(torch.load(model_path))
+model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -228,7 +228,7 @@ def train():
       optimizer.step()
     return loss, embedding
 
-print("Starting training...")
+"""print("Starting training...")
 train_loss_vec_100=[]
 test_loss_vec_100=[]
 losses = []
@@ -265,7 +265,7 @@ model_path = f'{File_Name}.pth'# 'trained_model_1.pth'
 torch.save(model.state_dict(), model_path)
 
 # File path where you want to save the pickled data
-file_path =f'{File_Name}.pkl'# 'data.pkl'
+file_path =f'{File_Name}.pkl'# 'data.pkl
 
 # Serialize and save the object to a file
 data_during_trainig={}
@@ -273,7 +273,7 @@ data_during_trainig['losses']=losses
 data_during_trainig['train_loss_vec_100']=train_loss_vec_100
 data_during_trainig['test_loss_vec_100']=test_loss_vec_100
 with open(file_path, 'wb') as file:
-    pkl.dump(data_during_trainig, file)
+    pkl.dump(data_during_trainig, file)"""
 
 
 #-----------------------------------------Test Learned Model---------------------------------------
