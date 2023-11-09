@@ -11,10 +11,12 @@ import shutil
 from logging import getLogger, StreamHandler, INFO
 import pickle as pkl
 import numpy as np
+import scipy.stats as stats
 from  torch_geometric.utils import to_networkx
 import matplotlib.pyplot as plt
 from torch_geometric.data import DataLoader
 import torch
+from scipy.stats import kendalltau
 from torch_geometric.data import Data
 import networkx as nx
 from torch_geometric.utils.convert import to_networkx
@@ -34,6 +36,7 @@ from torch_geometric.datasets import MoleculeNet
 from sklearn.manifold import TSNE
 from scipy.stats import norm
 import argparse
+from matplotlib.ticker import MaxNLocator
 
 """
 # Create an argument parser
@@ -148,6 +151,12 @@ with open('rawTrainData_single_5_GNN', 'rb') as file:
         Label_5 = pkl.load(file)
         t_allPop_5 = pkl.load(file)
 
+with open('rawTrainData_single_6_GNN', 'rb') as file:
+        distrbPop_6 = pkl.load(file)
+        tEndPopBest_6 = pkl.load(file)
+        Label_6 = pkl.load(file)
+        t_allPop_6 = pkl.load(file)
+
 with open('Pop_Multi_3_GNN_all_data', 'rb') as file:
         Data_dict = pkl.load(file)
 distrb_arrays_multi_3 = Data_dict['distrb_arrays']
@@ -179,6 +188,10 @@ for i in np.arange(len(distrbPop_4)):
 classes_pop_5=np.zeros(t_allPop_5.shape,dtype=int)
 for i in np.arange(len(distrbPop_5)):
      classes_pop_5[:,i]=map_to_classes(t_allPop_5[:,i])
+
+classes_pop_6=np.zeros(t_allPop_6.shape,dtype=int)
+for i in np.arange(len(distrbPop_6)):
+     classes_pop_6[:,i]=map_to_classes(t_allPop_6[:,i])
 
 with open('Edge_GNN', 'rb') as file:
     Edge_GNN_dict = pkl.load(file)
@@ -238,6 +251,22 @@ for g in np.arange(num_comp_5):
             source_nodes.append(edge_series[i])
             target_nodes.append(edge_series[i + 1])
      edge_list_dict_5[g] = torch.tensor([ # Create an edge list for a graph with 4 nodes--class 0
+                         source_nodes+target_nodes, # Source Nodes
+                         target_nodes+source_nodes  # Target Nodes
+                        ], dtype=torch.long)
+     
+edge_list_dict_6={}
+for g in np.arange(num_comp_6):
+     g_i=Edge_GNN_dict[6][g]
+     source_nodes=[]
+     target_nodes=[]
+     for j in np.arange(len(g_i)):
+          edge_series=g_i[j]
+          # Iterate through the list of nodes and create edges
+          for i in range(len(edge_series) - 2):
+            source_nodes.append(edge_series[i])
+            target_nodes.append(edge_series[i + 1])
+     edge_list_dict_6[g] = torch.tensor([ # Create an edge list for a graph with 4 nodes--class 0
                          source_nodes+target_nodes, # Source Nodes
                          target_nodes+source_nodes  # Target Nodes
                         ], dtype=torch.long)
@@ -327,6 +356,18 @@ for i in np.arange(len(distrbPop_5)):
                             [0.0, distrbPop_5[i][4]/np.sum(distrbPop_5[i]) ,distrbPop_5[i][4]/1000.0, 0.0], # Features of Node 5
                             ],dtype=torch.float32)#torch.long)
         
+node_features_list_dict_6={}
+for i in np.arange(len(distrbPop_6)):
+        node_features_list_dict_6[i] = torch.tensor([
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node 0
+                            [0.0, distrbPop_6[i][0]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][0]/1000.0, 0.0], # Features of Node 1
+                            [0.0, distrbPop_6[i][1]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][1]/1000.0, 0.0], # Features of Node 2
+                            [0.0, distrbPop_6[i][2]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][2]/1000.0, 0.0], # Features of Node 3
+                            [0.0, distrbPop_6[i][3]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][3]/1000.0, 0.0], # Features of Node 4
+                            [0.0, distrbPop_6[i][4]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][4]/1000.0, 0.0], # Features of Node 5
+                            [0.0, distrbPop_6[i][5]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][5]/1000.0, 0.0], # Features of Node 6
+                            ],dtype=torch.float32)#torch.long)
+        
 node_features_list_dict_3_multy={}
 for i in np.arange(len(distrb_arrays_multi_3)):
         node_features_list_dict_3_multy[i] = torch.tensor([
@@ -394,10 +435,20 @@ for i in np.arange(len(distrb_arrays_multi_4)):
         #torch.save(Data_list[indx], os.path.join(os.getcwd()+'/Pop3_Dataset/') + f'4_data_multy{indx}.pt')
         indx=indx+1
 
+Data_list_test_Single_6 =  [0] * 4051
+for i in np.arange(len(distrbPop_6)):
+        for j in np.arange(num_comp_6):
+                Data_list_test_Single_6[j] = Data(x=node_features_list_dict_6[i], edge_index=edge_list_dict_6[j],y=t_allPop_6[j][i])#,y=t_allPop_4[j][i])#, ,y=classes_pop_4[j][i] edge_attr=edge_weight)
+                #torch.save(Data_list[indx], os.path.join(os.getcwd()+'/Pop3_Dataset/') + f'5_data_{indx}.pt')
+
 #list of graphs in nx format
 graphs_list_nx=[]
 for i in np.arange(len(Data_list)):
      graphs_list_nx.append(to_networkx(Data_list[i], to_undirected=True))
+
+graphs_list_nx_test_6=[]
+for i in np.arange(len(Data_list_test_Single_6)):
+     graphs_list_nx_test_6.append(to_networkx(Data_list_test_Single_6[i], to_undirected=True))
 
 
 #-----------------------------------------Batch Loader---------------------------------------
@@ -708,6 +759,176 @@ data_during_trainig['test_loss_vec_100']=test_loss_vec_100
 with open(file_path, 'wb') as file:
     pkl.dump(data_during_trainig, file)"""
 
+#----------------Plot lloss-----------------------
+with open(f'{File_Name}.pkl', 'rb') as file:
+    data_during_trainig = pkl.load(file)
+
+losses=data_during_trainig['losses']
+train_loss_vec_100=data_during_trainig['train_loss_vec_100']
+test_loss_vec_100=data_during_trainig['test_loss_vec_100']
+iters=np.arange(len(test_loss_vec_100))
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(iters[100:],torch.tensor(train_loss_vec_100).detach().numpy()[100:], '-',linewidth=0.5,color='r',label='Train')
+ax.plot(iters[100:],torch.tensor(test_loss_vec_100).detach().numpy()[100:], '-',linewidth=0.5,color='b',label='Test')
+ax.set_ylabel('$\mathrm{Loss}$', fontsize=20)
+ax.set_xlabel('$\mathrm{iter}$', fontsize=20)
+ax.legend(fontsize=15)  # Include the custom legend  title='Legend'
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('Loss.png',bbox_inches='tight',dpi=300)
+fig.savefig('Loss.pdf',bbox_inches='tight',dpi=300)
+
+#-----------------Test learned model on Single 6-------------------------
+t_pred_6=np.zeros((num_comp_6,len(distrbPop_6)))
+pred_best_class_6=np.zeros(len(distrbPop_6),dtype=int)
+with torch.no_grad():
+     for i in np.arange(len(distrbPop_6)):
+          t_true=t_allPop_6[:,i]
+          for j in np.arange(num_comp_6):
+               indcx=j
+               t_p,hid=model(Data_list_test_Single_6[indcx].x.float(), Data_list_test_Single_6[indcx].edge_index, Data_list_test_Single_6[indcx].batch)
+               t_pred_6[j,i]=t_p.numpy().flatten()[0]
+          pred_best_class_6[i]=np.argmax(t_pred_6[:,i])
+
+N_OL_S6=np.sum(t_pred_6>t_pred_6[int(Label_6)]) # need to run thisamount of OLOC simuyaltion to get the true best solution
+
+pred_6_best=np.zeros(len(distrbPop_6))
+pred_6_best_rel_val=np.zeros(len(distrbPop_6))
+num_clasess_btter_than_best_pred_6_single=np.zeros(len(distrbPop_6))
+for g in np.arange(len(distrbPop_6)):
+    y_val_all=t_allPop_6[:,g]
+    y_val_pred_best=t_allPop_6[pred_best_class_6[g],g]
+    pred_6_best[g]=y_val_pred_best
+    num_clasess_btter_than_best_pred_6_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
+    pred_6_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+for g in np.arange(len(distrbPop_6)):
+     y_val_all=t_allPop_6[:,g]
+     x_val=g*np.ones(len(y_val_all))
+     ax.plot(x_val,y_val_all,'o',color='b')
+ax.plot(np.arange(len(distrbPop_6)),pred_6_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2,color='r')
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+legend_markers = ['o', 's']
+legend_markersizes = [6, 10]  # Adjust the marker sizes here
+legend_colors=['b','r']
+# Create legend handles and labels for the 'o' and 's' points
+legend_handles = [
+    plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
+           markerfacecolor='none' if marker == 's' else 'auto', markeredgewidth=2, label=label,color=color)
+    for marker, markersize, label, color in zip(legend_markers, legend_markersizes, legend_labels, legend_colors)]
+# Add the legend to the plot
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+fig.savefig('all_pop_6_labels_pred.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_6_labels_pred.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_6_labels_pred.png")"""
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+for g in np.arange(len(distrbPop_6)):
+     y_val_all=t_allPop_6[:,g]
+     x_val=g*np.ones(len(y_val_all))
+     ax.plot(y_val_all,'o',markersize=3.0)
+ax.plot(pred_best_class_6,pred_6_best,'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+ax.plot(Label_6,t_allPop_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best}$',color='g')
+ax.axhline(y=pred_6_best, color='r', linestyle='--')
+ax.axhline(y=t_allPop_6[Label_6.astype(int),0], color='g', linestyle='--')
+ax.set_title(f'$N_{{\mathrm{{sub}}}}\,:\, {num_clasess_btter_than_best_pred_6_single[0].astype(int)-1} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{sub}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*(num_clasess_btter_than_best_pred_6_single[0].astype(int)-1)/y_val_all.shape[0],2)}\,\, , \,\, t_{{\mathrm{{PB}}}}/t_{{\mathrm{{TB}}}} \, : \,{np.round(pred_6_best[0]/t_allPop_6[Label_6.astype(int),0][0],3)}   $',fontsize=15) 
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+# Create legend handles and labels for the 'o' and 's' points
+ax.legend(loc='best', fontsize=15)
+fig.savefig('all_pop_S6_t.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_S6_t.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_S6_t.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_pred_6[:,0],'o',markersize=3.0)
+ax.plot(pred_best_class_6,t_pred_6[pred_best_class_6,0],'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+ax.plot(Label_6,t_pred_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best}$',color='g')
+ax.axhline(y=t_pred_6[pred_best_class_6,0], color='r', linestyle='--')
+ax.axhline(y=t_pred_6[Label_6.astype(int),0], color='g', linestyle='--')
+ax.tick_params(axis='both', which='major', labelsize=15)
+#ax.set_title(f'$\mathrm{{Num\,\, Graphs\,}}:\, {y_val_all.shape[0]} \, \, , \, \, N_{{\mathrm{{OL}}}}\,: \, {N_OL_S6}  $',fontsize=15) 
+ax.set_title(f'$N_{{\mathrm{{OL}}}}\,:\, {N_OL_S6} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{OL}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*N_OL_S6/y_val_all.shape[0],2)}  $',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$\hat{t}\,\, \mathrm{[s]}$',fontsize=20)
+# Create legend handles and labels for the 'o' and 's' points
+ax.legend(loc='lower left', fontsize=15)
+fig.savefig('all_pop_S6_t_hat.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_S6_t_hat.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_S6_t_hat.png")
+
+t_true_6_sorted_index = np.argsort(t_allPop_6.flatten())
+t_true_6_sorted_val = t_allPop_6.flatten()[t_true_6_sorted_index]
+t_pred_6_sorted_val_sorted_from_ture_indx =t_pred_6.flatten()[t_true_6_sorted_index]
+
+t_true_6_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_true_6_sorted_val, 4), x, kind='strict'))(np.round(t_true_6_sorted_val, 1))
+t_pred_6_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_pred_6_sorted_val_sorted_from_ture_indx, 4), x, kind='strict'))(np.round(t_pred_6_sorted_val_sorted_from_ture_indx, 1))
+
+kendall_distance_S6, _ = kendalltau(t_true_6_sorted_val_percentileofscoreVec, t_pred_6_sorted_val_percentileofscoreVec)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_true_6_sorted_val_percentileofscoreVec,t_pred_6_sorted_val_percentileofscoreVec,'o',markersize=2)#,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+#ax.plot([0,100], [0,100],color='r',alpha=0.4, linewidth=6)
+ax.plot([0,100], [0,100],'--',color='r',alpha=0.4, linewidth=3)
+tick_locations = [0, 20, 40, 60, 80, 100]
+tick_labels = [f'{tick}%' for tick in tick_locations]
+# Update x and y ticks
+ax.set_xticks(tick_locations)
+ax.set_xticklabels(tick_labels, fontsize=15)
+ax.set_yticks(tick_locations)
+ax.set_yticklabels(tick_labels, fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{S6}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_S6,2)}  $',fontsize=15) 
+ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
+ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
+ax.set_xlim(0.4, 100.4)
+ax.set_ylim(-0.4, 100.4)
+fig.savefig('S6_K.png',bbox_inches='tight',dpi=300)
+fig.savefig('S6_K.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("S6_K.png")
+
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(pred_6_best_rel_val,'o')     
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(0.8, 1.03)
+fig.savefig('all_pop_6_labels_pred_2.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_6_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_6_labels_pred_2.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(num_clasess_btter_than_best_pred_6_single-1,'o')   
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$g > \hat{g}$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_ylim(-0.1, 6.1)
+fig.savefig('num_clasess_btter_than_best_pred_6_single.png',bbox_inches='tight',dpi=300)
+fig.savefig('num_clasess_btter_than_best_pred_6_single.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("num_clasess_btter_than_best_pred_6_single.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+for i in np.arange(len(distrbPop_6)):
+     ax.plot(t_pred_6[:,i],t_allPop_6[:,i], 'o',
+            linewidth=2, markersize=8, markeredgewidth=2, color='r')
+ax.plot([10, 88], [10, 88],'--', color='gray', linewidth=2, alpha=1.0)
+ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
+ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('end_result_6_all.png',bbox_inches='tight',dpi=300)
+fig.savefig('end_result_6_all.pdf',bbox_inches='tight',dpi=300)       
+mlflow.log_artifact("end_result_6_all.png")"""
+
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
 
@@ -715,15 +936,19 @@ with open(file_path, 'wb') as file:
 #test_batch = next(iter(loader_test))
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 all_errors_test=torch.empty(0)  
+batch_test_true_y_vec=torch.empty(0)  
+batch_test_pred_y_vec=torch.empty(0)  
 with torch.no_grad():
     for batch_test in loader_test:
         batch_test.to(device)
         pred, embed = model(batch_test.x.float(), batch_test.edge_index, batch_test.batch)
         ax.plot(batch_test.y,pred.detach().numpy().flatten(), 'o',
-            linewidth=2, markersize=3, markeredgewidth=2,color='r') #markerfacecolor='none'
+            linewidth=2, markersize=3, markeredgewidth=2,color='b') #markerfacecolor='none'
         error_test_all=batch_test.y-pred.detach().numpy().flatten()
         # Append the values to the empty tensor along dimension 0
         all_errors_test = torch.cat((all_errors_test, error_test_all), dim=0)
+        batch_test_true_y_vec= torch.cat((batch_test_true_y_vec, batch_test.y), dim=0)
+        batch_test_pred_y_vec= torch.cat((batch_test_pred_y_vec, pred.detach()), dim=0)
     ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
     ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
@@ -737,18 +962,55 @@ fig.savefig('test_data_learned_model.png',bbox_inches='tight',dpi=300)
 fig.savefig('test_data_learned_model.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("test_data_learned_model.png")
 
+batch_test_true_y_vec_numpy=batch_test_true_y_vec.numpy().flatten()
+batch_test_pred_y_vec_numpy=batch_test_pred_y_vec.numpy().flatten()
+t_true_test_sorted_index = np.argsort(batch_test_true_y_vec_numpy)
+t_true_test_sorted_val = batch_test_true_y_vec_numpy[t_true_test_sorted_index]
+t_pred_test_sorted_val_sorted_from_ture_indx =batch_test_pred_y_vec_numpy[t_true_test_sorted_index]
+
+t_true_test_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_true_test_sorted_val, 4), x, kind='strict'))(np.round(t_true_test_sorted_val, 1))
+t_pred_test_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_pred_test_sorted_val_sorted_from_ture_indx, 4), x, kind='strict'))(np.round(t_pred_test_sorted_val_sorted_from_ture_indx, 1))
+
+kendall_distance_test, _ = kendalltau(t_true_test_sorted_val_percentileofscoreVec, t_pred_test_sorted_val_percentileofscoreVec)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_true_test_sorted_val_percentileofscoreVec,t_pred_test_sorted_val_percentileofscoreVec,'o',markersize=1)#,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+ax.plot([0,100], [0,100],'--',color='r',alpha=0.4, linewidth=3)
+tick_locations = [0, 20, 40, 60, 80, 100]
+tick_labels = [f'{tick}%' for tick in tick_locations]
+# Update x and y ticks
+ax.set_xticks(tick_locations)
+ax.set_xticklabels(tick_labels, fontsize=15)
+ax.set_yticks(tick_locations)
+ax.set_yticklabels(tick_labels, fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{All\,\,Test\,\,Data}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {t_true_test_sorted_val_percentileofscoreVec.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_test,2)}  $',fontsize=15) 
+ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
+ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
+ax.set_xlim(0.4, 100.4)
+ax.set_ylim(-0.4, 100.4)
+fig.savefig('test_K.png',bbox_inches='tight',dpi=300)
+fig.savefig('test_K.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("test_K.png")
+
 ## Train data##
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 all_errors_train=torch.empty(0)  
+batch_train_true_y_vec=torch.empty(0)  
+batch_train_pred_y_vec=torch.empty(0)  
 with torch.no_grad():
     for batch_test in loader:
         batch_test.to(device)
         pred, embed = model(batch_test.x.float(), batch_test.edge_index, batch_test.batch)
         ax.plot(batch_test.y,pred.detach().numpy().flatten(), 'o',
-            linewidth=2, markersize=3, markeredgewidth=2,color='r') #markerfacecolor='none'
+            linewidth=2, markersize=3, markeredgewidth=2,color='b') #markerfacecolor='none'
         error_test_all=batch_test.y-pred.detach().numpy().flatten()
         # Append the values to the empty tensor along dimension 0
         all_errors_train = torch.cat((all_errors_train, error_test_all), dim=0)
+        batch_train_true_y_vec= torch.cat((batch_train_true_y_vec, batch_test.y), dim=0)
+        batch_train_pred_y_vec= torch.cat((batch_train_pred_y_vec, pred.detach()), dim=0)
     ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
     ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
@@ -761,6 +1023,39 @@ ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes,
 fig.savefig('train_data_learned_model.png',bbox_inches='tight',dpi=300)
 fig.savefig('train_data_learned_model.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("train_data_learned_model.png")
+
+batch_train_true_y_vec_numpy=batch_train_true_y_vec.numpy().flatten()
+batch_train_pred_y_vec_numpy=batch_train_pred_y_vec.numpy().flatten()
+t_true_train_sorted_index = np.argsort(batch_train_true_y_vec_numpy)
+t_true_train_sorted_val = batch_train_true_y_vec_numpy[t_true_train_sorted_index]
+t_pred_train_sorted_val_sorted_from_ture_indx =batch_train_pred_y_vec_numpy[t_true_train_sorted_index]
+
+t_true_train_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_true_train_sorted_val, 4), x, kind='strict'))(np.round(t_true_train_sorted_val, 1))
+t_pred_train_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_pred_train_sorted_val_sorted_from_ture_indx, 4), x, kind='strict'))(np.round(t_pred_train_sorted_val_sorted_from_ture_indx, 1))
+
+kendall_distance_train, _ = kendalltau(t_true_train_sorted_val_percentileofscoreVec, t_pred_train_sorted_val_percentileofscoreVec)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_true_train_sorted_val_percentileofscoreVec,t_pred_train_sorted_val_percentileofscoreVec,'o',markersize=1)#,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+ax.plot([0,100], [0,100],'--',color='r',alpha=0.4, linewidth=3)
+tick_locations = [0, 20, 40, 60, 80, 100]
+tick_labels = [f'{tick}%' for tick in tick_locations]
+# Update x and y ticks
+ax.set_xticks(tick_locations)
+ax.set_xticklabels(tick_labels, fontsize=15)
+ax.set_yticks(tick_locations)
+ax.set_yticklabels(tick_labels, fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{All\,\,Train\,\,Data}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {t_true_train_sorted_val_percentileofscoreVec.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_test,2)}  $',fontsize=15) 
+ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
+ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
+ax.set_xlim(0.4, 100.4)
+ax.set_ylim(-0.4, 100.4)
+fig.savefig('train_K.png',bbox_inches='tight',dpi=300)
+fig.savefig('train_K.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("train_K.png")
 
 #fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 #x_range = np.linspace(min(error_test_all.numpy()), max(error_test_all.numpy()), 100)
@@ -801,9 +1096,9 @@ class_colors = [colors[i] for i in classess_graphs]
 # Create a figure and axes
 fig, ax = plt.subplots()
 # Create a scatter plot on the axes
-scatter = ax.scatter(graph_embedding_2d[:, 0], graph_embedding_2d[:, 1], c=class_colors)#, label=classess_graphs)
+scatter = ax.scatter(graph_embedding_2d[:, 0], graph_embedding_2d[:, 1], c=class_colors,s=25)#, label=classess_graphs)
 # Create a custom legend for the defined five classes
-custom_legend = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=Labels[i]) for i, color in enumerate(colors)] #f'Class {i}'
+custom_legend = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=8, label=Labels[i]) for i, color in enumerate(colors)] #f'Class {i}'
 # Customize the plot (e.g., add labels, title, legend, etc.)
 ax.set_xlabel('Embedding 1',fontsize=20)
 ax.set_ylabel('Embedding 2',fontsize=20)
@@ -839,9 +1134,15 @@ with torch.no_grad():
           pred_best_class_3[i]=np.argmax(t_pred_3[:,i])
           group_num=group_num+1
 
+t_pred_3_T=t_pred_3.T
+true_best_labels_for_each_d_S3=Label_3.astype(int)
+t_pred_3_correspond_to_best_true = t_pred_3_T[np.arange(len(true_best_labels_for_each_d_S3)), true_best_labels_for_each_d_S3]
+N_OL_S3 = np.sum(t_pred_3_T > t_pred_3_correspond_to_best_true[:, np.newaxis], axis=1)# need to run thisamount of OLOC simuyaltion to get the true best solution
+
 pred_3_best=np.zeros(len(distrbPop_3))
 num_clasess_btter_than_best_pred_3_single=np.zeros(len(distrbPop_3))
 pred_3_best_rel_val=np.zeros(len(distrbPop_3))
+pred_3_best_absolute_val=np.zeros(len(distrbPop_3))
 for g in np.arange(len(distrbPop_3)):
     y_val_all=t_allPop_3[:,g]
     y_val_pred_best=t_allPop_3[pred_best_class_3[g],g]
@@ -849,13 +1150,14 @@ for g in np.arange(len(distrbPop_3)):
     num_clasess_btter_than_best_pred_3_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_3_best[g]=y_val_pred_best
     pred_3_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+    pred_3_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_3)):
      if (g%5==0):
         y_val_all=t_allPop_3[:,g]
         x_val=g*np.ones(len(y_val_all))
-        ax.plot(x_val,y_val_all,'o')
+        ax.plot(x_val,y_val_all,'o',markersize=5)
 indices = np.arange(0, len(distrbPop_3), 5)
 ax.plot(indices,pred_3_best[indices],'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
@@ -876,7 +1178,7 @@ fig.savefig('all_pop_3_labels_pred.png')
 fig.savefig('all_pop_3_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_labels_pred.png")
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_3_best_rel_val,'o')     
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
@@ -884,9 +1186,9 @@ ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_ylim(0.8, 1.03)
 fig.savefig('all_pop_3_labels_pred_2.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_3_labels_pred_2.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("all_pop_3_labels_pred_2.png")
+mlflow.log_artifact("all_pop_3_labels_pred_2.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(num_clasess_btter_than_best_pred_3_single-1,'o')    
 ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
@@ -895,9 +1197,59 @@ ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_ylim(-0.1, 3.1)
 fig.savefig('num_clasess_btter_than_best_pred_3_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_3_single.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("num_clasess_btter_than_best_pred_3_single.png")
+mlflow.log_artifact("num_clasess_btter_than_best_pred_3_single.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(N_OL_S3,'o',markersize=5,label='$N_{\mathrm{OL}}$')    
+ax.plot(num_clasess_btter_than_best_pred_3_single-1,'s',markersize=10,markerfacecolor='none',label='$N_{\mathrm{sub}}$')   
+ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15) 
+ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
+ax.set_ylabel('$N$',fontsize=20)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_ylim(-0.1, 3.1)
+ax.legend(loc='best', fontsize=15)
+ax.xaxis.set_major_locator(MaxNLocator(integer=True)) # Set x-axis ticker locator to show only integer ticks
+ax.yaxis.set_major_locator(MaxNLocator(integer=True)) # Set y-axis ticker locator to show only integer ticks
+fig.savefig('N_OL_S3.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_OL_S3.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_OL_S3.png")"""
+
+# Create the first plot
+fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+ax1.plot(N_OL_S3, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
+ax1.plot(num_clasess_btter_than_best_pred_3_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
+ax1.set_title(f'$G \, : \,  S3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
+ax1.set_ylabel('$N$', fontsize=20)
+ax1.tick_params(axis='both', which='major', labelsize=15)
+ax1.set_ylim(-0.1, 3.1)
+#ax1.legend(loc='best', fontsize=15)
+ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
+ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
+# Create the second plot with a twin y-axis
+ax2 = ax1.twinx()
+#ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_3_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+# Set the color of the right y-axis label and tick labels
+ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+for label in ax2.get_yticklabels():
+    label.set_color('g')  # Change 'red' to your desired color
+ax2.tick_params(axis='both', which='major', labelsize=15)
+ax2.set_ylim(0.85, 1.03)
+# Get the handles and labels for both legends
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+# Combine the legends into a single legend
+handles = handles1 + handles2
+labels = labels1 + labels2
+# Create a single legend
+ax1.legend(handles, labels, loc=(0.4, 0.45), fontsize=15)
+# Save or display the combined figure
+fig.savefig('N_tg_Combined_S3.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_tg_Combined_S3.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_tg_Combined_S3.png")
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_3)):
      ax.plot(t_pred_3[:,i],t_allPop_3[:,i], 'o',
             linewidth=2, markersize=3, markeredgewidth=2, color='r') # markerfacecolor='none'
@@ -907,7 +1259,7 @@ ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('end_result_3_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_3_all.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("end_result_3_all.png")
+mlflow.log_artifact("end_result_3_all.png")"""
 
 last3_indx=indcx
 t_pred_4=np.zeros((num_comp_4,len(distrbPop_4)))
@@ -923,8 +1275,16 @@ with torch.no_grad():
           group_num=group_num+1
           pred_best_class_4[i]=np.argmax(t_pred_4[:,i])
 
+Label_4=np.argmax(t_allPop_4,axis=0)
+t_pred_4_T=t_pred_4.T
+true_best_labels_for_each_d_S4=Label_4.astype(int)
+t_pred_4_correspond_to_best_true = t_pred_4_T[np.arange(len(true_best_labels_for_each_d_S4)), true_best_labels_for_each_d_S4]
+N_OL_S4 = np.sum(t_pred_4_T > t_pred_4_correspond_to_best_true[:, np.newaxis], axis=1)# need to run thisamount of OLOC simuyaltion to get the true best solution
+
+
 pred_4_best=np.zeros(len(distrbPop_4))
 pred_4_best_rel_val=np.zeros(len(distrbPop_4))
+pred_4_best_absolute_val=np.zeros(len(distrbPop_4))
 num_clasess_btter_than_best_pred_4_single=np.zeros(len(distrbPop_4))
 for g in np.arange(len(distrbPop_4)):
     y_val_all=t_allPop_4[:,g]
@@ -932,6 +1292,7 @@ for g in np.arange(len(distrbPop_4)):
     pred_4_best[g]=y_val_pred_best
     num_clasess_btter_than_best_pred_4_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_4_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+    pred_4_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_4)):
@@ -960,7 +1321,7 @@ fig.savefig('all_pop_4_labels_pred.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_4_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_labels_pred.png")
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_4_best_rel_val,'o')     
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
@@ -980,9 +1341,44 @@ ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15)
 ax.set_ylim(-0.1, 4.1)
 fig.savefig('num_clasess_btter_than_best_pred_4_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_4_single.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")
+mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+# Create the first plot
+fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+ax1.plot(N_OL_S4, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
+ax1.plot(num_clasess_btter_than_best_pred_4_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
+ax1.set_title(f'$G \, : \,  S4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
+ax1.set_ylabel('$N$', fontsize=20)
+ax1.tick_params(axis='both', which='major', labelsize=15)
+ax1.set_ylim(-0.1, 4.1)
+#ax1.legend(loc='best', fontsize=15)
+ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
+ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
+# Create the second plot with a twin y-axis
+ax2 = ax1.twinx()
+#ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_4_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+# Set the color of the right y-axis label and tick labels
+ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+for label in ax2.get_yticklabels():
+    label.set_color('g')  # Change 'red' to your desired color
+ax2.tick_params(axis='both', which='major', labelsize=15)
+ax2.set_ylim(0.9, 1.03)
+# Get the handles and labels for both legends
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+# Combine the legends into a single legend
+handles = handles1 + handles2
+labels = labels1 + labels2
+# Create a single legend
+ax1.legend(handles, labels, loc=(0.01, 0.5), fontsize=15)
+# Save or display the combined figure
+fig.savefig('N_tg_Combined_S4.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_tg_Combined_S4.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_tg_Combined_S4.png")
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_4)):
      ax.plot(t_pred_4[:,i],t_allPop_4[:,i], 'o',
             linewidth=2, markersize=8, markeredgewidth=2, color='r')
@@ -992,7 +1388,7 @@ ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('end_result_4_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_4_all.pdf',bbox_inches='tight',dpi=300)     
-mlflow.log_artifact("end_result_4_all.png")
+mlflow.log_artifact("end_result_4_all.png")"""
 
 last4_indx=indcx
 t_pred_5=np.zeros((num_comp_5,len(distrbPop_5)))
@@ -1008,8 +1404,16 @@ with torch.no_grad():
           group_num=group_num+1
           pred_best_class_5[i]=np.argmax(t_pred_5[:,i])
 
+#Label_5=np.argmax(t_allPop_5,axis=0)
+t_pred_5_T=t_pred_5.T
+true_best_labels_for_each_d_S5=Label_5.astype(int)
+t_pred_5_correspond_to_best_true = t_pred_5_T[np.arange(len(true_best_labels_for_each_d_S5)), true_best_labels_for_each_d_S5]
+N_OL_S5 = np.sum(t_pred_5_T > t_pred_5_correspond_to_best_true[:, np.newaxis], axis=1)# need to run thisamount of OLOC simuyaltion to get the true best solution
+
+
 pred_5_best=np.zeros(len(distrbPop_5))
 pred_5_best_rel_val=np.zeros(len(distrbPop_5))
+pred_5_best_absolute_val=np.zeros(len(distrbPop_5))
 num_clasess_btter_than_best_pred_5_single=np.zeros(len(distrbPop_5))
 for g in np.arange(len(distrbPop_5)):
     y_val_all=t_allPop_5[:,g]
@@ -1017,6 +1421,7 @@ for g in np.arange(len(distrbPop_5)):
     pred_5_best[g]=y_val_pred_best
     num_clasess_btter_than_best_pred_5_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
     pred_5_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+    pred_5_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_5)):
@@ -1025,6 +1430,7 @@ for g in np.arange(len(distrbPop_5)):
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(distrbPop_5)),pred_5_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
 legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
@@ -1042,7 +1448,7 @@ fig.savefig('all_pop_5_labels_pred.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_5_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_5_labels_pred.png")
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(pred_5_best_rel_val,'o')     
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
@@ -1062,9 +1468,44 @@ ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15)
 ax.set_ylim(-0.1, 6.1)
 fig.savefig('num_clasess_btter_than_best_pred_5_single.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_5_single.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")
+mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+# Create the first plot
+fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+ax1.plot(N_OL_S5, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
+ax1.plot(num_clasess_btter_than_best_pred_5_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
+ax1.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
+ax1.set_ylabel('$N$', fontsize=20)
+ax1.tick_params(axis='both', which='major', labelsize=15)
+ax1.set_ylim(-0.1, 6.1)
+#ax1.legend(loc='best', fontsize=15)
+ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
+ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
+# Create the second plot with a twin y-axis
+ax2 = ax1.twinx()
+#ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_5_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+# Set the color of the right y-axis label and tick labels
+ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+for label in ax2.get_yticklabels():
+    label.set_color('g')  # Change 'red' to your desired color
+ax2.tick_params(axis='both', which='major', labelsize=15)
+ax2.set_ylim(0.95, 1.01)
+# Get the handles and labels for both legends
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+# Combine the legends into a single legend
+handles = handles1 + handles2
+labels = labels1 + labels2
+# Create a single legend
+ax1.legend(handles, labels, loc=(0.01, 0.5), fontsize=15)
+# Save or display the combined figure
+fig.savefig('N_tg_Combined_S5.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_tg_Combined_S5.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_tg_Combined_S5.png")
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(distrbPop_5)):
      ax.plot(t_pred_5[:,i],t_allPop_5[:,i], 'o',
             linewidth=2, markersize=8, markeredgewidth=2, color='r')
@@ -1074,9 +1515,9 @@ ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('end_result_5_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_5_all.pdf',bbox_inches='tight',dpi=300)       
-mlflow.log_artifact("end_result_5_all.png")
+mlflow.log_artifact("end_result_5_all.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(np.argmax(t_pred_3,0),'o-',label='pre: 3')
 ax.plot(np.argmax(t_allPop_3,0),'--o',label='true: 3')
 ax.legend()
@@ -1088,7 +1529,6 @@ mlflow.log_param("label_accuracy_3", np.sum(np.argmax(t_allPop_3,0)==np.argmax(t
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(np.argmax(t_pred_4,0),'o-',label='pre: 4')
 ax.plot(np.argmax(t_allPop_4,0),'--o',label='true: 4')
-ax.legend()
 fig.savefig('end_result_4_label.png')
 print(np.sum(np.argmax(t_allPop_4,0)==np.argmax(t_pred_4,0))/len(distrbPop_4))
 mlflow.log_artifact("end_result_4_label.png")
@@ -1101,7 +1541,7 @@ ax.legend()
 fig.savefig('end_result_5_label.png')
 print(np.sum(np.argmax(t_allPop_5,0)==np.argmax(t_pred_5,0))/len(distrbPop_5))
 mlflow.log_artifact("end_result_5_label.png")
-mlflow.log_param("label_accuracy_5", np.sum(np.argmax(t_allPop_5,0)==np.argmax(t_pred_5,0))/len(distrbPop_5))
+mlflow.log_param("label_accuracy_5", np.sum(np.argmax(t_allPop_5,0)==np.argmax(t_pred_5,0))/len(distrbPop_5))"""
 
 
 #-------multi 3 multi, fora each disturbance (out of 30) we have 9 diffrent calssess--> you cna see branches usjg edges--------
@@ -1141,8 +1581,16 @@ t_pred_3_multi_gropuped_best_index=t_pred_3_multi_gropuped.argmax(axis=0)
 t_real_3_multi_gropuped_best=t_real_3_multi_gropuped.max(axis=0)
 t_pred_3_multi_gropuped_best=np.zeros(len(unique_dist_group_multi_3))
 t_pred_3_multi_gropuped_best_rel_val=np.zeros(len(unique_dist_group_multi_3))
+t_pred_3_multi_gropuped_best_absolute_val=np.zeros(len(unique_dist_group_multi_3))
 for i in np.arange(len(unique_dist_group_multi_3)):
      t_pred_3_multi_gropuped_best[i]=t_real_3_multi_gropuped[t_pred_3_multi_gropuped_best_index[i],i]
+
+Label_3_multi=t_real_3_multi_gropuped.T.argmax(axis=1)
+t_pred_3_T_multi=t_pred_3_multi_gropuped.T
+true_best_labels_for_each_d_M3=Label_3_multi.astype(int)
+t_pred_3M_correspond_to_best_true = t_pred_3_T_multi[np.arange(len(true_best_labels_for_each_d_M3)), true_best_labels_for_each_d_M3]
+N_OL_M3 = np.sum(t_pred_3_T_multi > t_pred_3M_correspond_to_best_true[:, np.newaxis], axis=1)# need to run thisamount of OLOC simuyaltion to get the true best solution
+
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 num_clasess_btter_than_best_pred_3_multi=np.zeros(len(unique_dist_group_multi_3))
@@ -1152,9 +1600,11 @@ for g in np.arange(len(unique_dist_group_multi_3)):
      y_val_pred_best=t_pred_3_multi_gropuped_best[g]
      num_clasess_btter_than_best_pred_3_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_3_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+     t_pred_3_multi_gropuped_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_3)),t_pred_3_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
 legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
@@ -1172,7 +1622,7 @@ fig.savefig('all_pop_3_multi_labels_pred.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_3_multi_labels_pred.pdf',bbox_inches='tight',dpi=300)   
 mlflow.log_artifact("all_pop_3_multi_labels_pred.png")
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_3_multi_gropuped_best_rel_val,'o')     
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
@@ -1192,9 +1642,44 @@ ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15)
 ax.set_ylim(-0.1, 1.1)
 fig.savefig('num_clasess_btter_than_best_pred_3_multi.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_3_multi.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")
+mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")"""
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+# Create the first plot
+fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+ax1.plot(N_OL_M3, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
+ax1.plot(num_clasess_btter_than_best_pred_3_multi - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
+ax1.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
+ax1.set_ylabel('$N$', fontsize=20)
+ax1.tick_params(axis='both', which='major', labelsize=15)
+ax1.set_ylim(-0.1, 1.1)
+#ax1.legend(loc='best', fontsize=15)
+ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
+ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
+# Create the second plot with a twin y-axis
+ax2 = ax1.twinx()
+#ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(t_pred_3_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+# Set the color of the right y-axis label and tick labels
+ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+for label in ax2.get_yticklabels():
+    label.set_color('g')  # Change 'red' to your desired color
+ax2.tick_params(axis='both', which='major', labelsize=15)
+ax2.set_ylim(0.95, 1.01)
+# Get the handles and labels for both legends
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+# Combine the legends into a single legend
+handles = handles1 + handles2
+labels = labels1 + labels2
+# Create a single legend
+ax1.legend(handles, labels, loc=(0.01, 0.5), fontsize=15)
+# Save or display the combined figure
+fig.savefig('N_tg_Combined_M3.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_tg_Combined_M3.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_tg_Combined_M3.png")
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_3)):
      ax.plot(t_pred_3_multi_gropuped[:,i],t_real_3_multi_gropuped[:,i], 'o',
             linewidth=2, markersize=8, markeredgewidth=2, color='r')
@@ -1204,7 +1689,7 @@ ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('end_result_3_multi_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_3_multi_all.pdf',bbox_inches='tight',dpi=300)          
-mlflow.log_artifact("end_result_3_multi_all.png")
+mlflow.log_artifact("end_result_3_multi_all.png")"""
 
 print(np.sum(np.argmax(t_real_3_multi_gropuped,0)==np.argmax(t_pred_3_multi_gropuped,0))/len(unique_dist_group_multi_3))
 mlflow.log_param("label_accuracy_3_multi", np.sum(np.argmax(t_real_3_multi_gropuped,0)==np.argmax(t_pred_3_multi_gropuped,0))/len(unique_dist_group_multi_3))
@@ -1247,8 +1732,17 @@ t_pred_4_multi_gropuped_best_index=t_pred_4_multi_gropuped.argmax(axis=0)
 t_real_4_multi_gropuped_best=t_real_4_multi_gropuped.max(axis=0)
 t_pred_4_multi_gropuped_best=np.zeros(len(unique_dist_group_multi_4))
 t_pred_4_multi_gropuped_best_rel_val=np.zeros(len(unique_dist_group_multi_4))
+t_pred_4_multi_gropuped_best_absolute_val=np.zeros(len(unique_dist_group_multi_4))
 for i in np.arange(len(unique_dist_group_multi_4)):
      t_pred_4_multi_gropuped_best[i]=t_real_4_multi_gropuped[t_pred_4_multi_gropuped_best_index[i],i]
+
+Label_4_multi=t_real_4_multi_gropuped.T.argmax(axis=1)
+t_pred_4_T_multi=t_pred_4_multi_gropuped.T
+true_best_labels_for_each_d_M4=Label_4_multi.astype(int)
+t_pred_4M_correspond_to_best_true = t_pred_4_T_multi[np.arange(len(true_best_labels_for_each_d_M4)), true_best_labels_for_each_d_M4]
+N_OL_M4 = np.sum(t_pred_4_T_multi > t_pred_4M_correspond_to_best_true[:, np.newaxis], axis=1)# need to run thisamount of OLOC simuyaltion to get the true best solution
+
+
 
 num_clasess_btter_than_best_pred_4_multi=np.zeros(len(unique_dist_group_multi_4))
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -1258,9 +1752,11 @@ for g in np.arange(len(unique_dist_group_multi_4)):
      y_val_pred_best=t_pred_4_multi_gropuped_best[g]
      num_clasess_btter_than_best_pred_4_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_4_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+     t_pred_4_multi_gropuped_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
      ax.plot(x_val,y_val_all,'o')
 ax.plot(np.arange(len(unique_dist_group_multi_4)),t_pred_4_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$G \, : \,  M4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
 legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
@@ -1274,11 +1770,13 @@ legend_handles = [
 ]
 # Add the legend to the plot
 ax.legend(handles=legend_handles, loc='best', fontsize=15)
+ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 fig.savefig('all_pop_4_multi_labels_pred.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_4_multi_labels_pred.pdf',bbox_inches='tight',dpi=300)   
 mlflow.log_artifact("all_pop_4_multi_labels_pred.png")
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_4_multi_gropuped_best_rel_val,'o')   
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
 ax.set_ylabel(r'$t_{\hat{g}}/t_g $',fontsize=20)
@@ -1298,7 +1796,41 @@ ax.set_title(f'Num Graphs: {y_val_all.shape[0]}',fontsize=15)
 ax.set_ylim(-0.1, 5.1)
 fig.savefig('num_clasess_btter_than_best_pred_4_multi.png',bbox_inches='tight',dpi=300)
 fig.savefig('num_clasess_btter_than_best_pred_4_multi.pdf',bbox_inches='tight',dpi=300)
-mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")
+mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")"""
+
+fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+ax1.plot(N_OL_M4, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
+ax1.plot(num_clasess_btter_than_best_pred_4_multi - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
+ax1.set_title(f'$G \, : \,  M4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
+ax1.set_ylabel('$N$', fontsize=20)
+ax1.tick_params(axis='both', which='major', labelsize=15)
+ax1.set_ylim(-0.2, 5.3)
+#ax1.legend(loc='best', fontsize=15)
+ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
+ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
+# Create the second plot with a twin y-axis
+ax2 = ax1.twinx()
+#ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(t_pred_4_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+# Set the color of the right y-axis label and tick labels
+ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+for label in ax2.get_yticklabels():
+    label.set_color('g')  # Change 'red' to your desired color
+ax2.tick_params(axis='both', which='major', labelsize=15)
+ax2.set_ylim(0.95, 1.01)
+# Get the handles and labels for both legends
+handles1, labels1 = ax1.get_legend_handles_labels()
+handles2, labels2 = ax2.get_legend_handles_labels()
+# Combine the legends into a single legend
+handles = handles1 + handles2
+labels = labels1 + labels2
+# Create a single legend
+ax1.legend(handles, labels, loc=(0.2, 0.5), fontsize=15)
+# Save or display the combined figure
+fig.savefig('N_tg_Combined_M4.png',bbox_inches='tight',dpi=300)
+fig.savefig('N_tg_Combined_M4.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("N_tg_Combined_M4.png")
 
 """fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 data = num_clasess_btter_than_best_pred_4_multi-1  # Assuming this is your data
@@ -1315,7 +1847,7 @@ fig.savefig('num_clasess_btter_than_best_pred_4_multi_bar.png', bbox_inches='tig
 fig.savefig('num_clasess_btter_than_best_pred_4_multi_bar.pdf', bbox_inches='tight', dpi=300)"""
 
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for i in np.arange(len(unique_dist_group_multi_4)):
      ax.plot(t_pred_4_multi_gropuped[:,i],t_real_4_multi_gropuped[:,i], 'o',
             linewidth=2, markersize=8, markeredgewidth=2, color='r')     
@@ -1325,7 +1857,7 @@ ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('end_result_4_multi_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_4_multi_all.pdf',bbox_inches='tight',dpi=300)    
-mlflow.log_artifact("end_result_4_multi_all.png")
+mlflow.log_artifact("end_result_4_multi_all.png")"""
 
 print(np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
 mlflow.log_param("label_accuracy_4_multi", np.sum(np.argmax(t_real_4_multi_gropuped,0)==np.argmax(t_pred_4_multi_gropuped,0))/len(unique_dist_group_multi_4))
