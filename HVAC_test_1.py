@@ -38,8 +38,8 @@ from scipy.stats import norm
 import argparse
 from matplotlib.ticker import MaxNLocator
 
-"""
-# Create an argument parser
+
+"""# Create an argument parser
 parser = argparse.ArgumentParser(description='HVAC Test Script')
 # Add arguments for "x," "y," and "z"
 parser.add_argument('--embedding_size', type=int, required=True, help='Value of embedding_size')
@@ -53,10 +53,10 @@ numHeads=args.numHeads
 num_layers=args.num_layers
 NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH"""
 
-embedding_size=32#32
-numHeads=4
-num_layers=3
-NUM_GRAPHS_PER_BATCH=100#100
+embedding_size=16#5#16#32
+numHeads=4#2#4
+num_layers=3#3#3
+NUM_GRAPHS_PER_BATCH=100#300#100
 
 #python HVAC_test_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 50
 
@@ -459,13 +459,35 @@ for i in np.arange(len(Data_list_test_Single_6)):
 #Data_list=Data_list[0:35299] #only singel split cases
 #Data_list=Data_list[35299:] #only multi split cases
 
+order_indices = [
+    list(range(0,781)),        # 0 to 780
+    list(range(2600, 6834)),  # 2600 to 6833
+    list(range(16762, 22273)),# 16762 to 22272
+    list(range(35299, 35380)),# 35299 to 35379
+    list(range(35569, 36097)),# 35569 to 36096
+    list(range(781, 2600)),# 781 to 2599
+    list(range(6834, 16762)),# 6834 to 16761
+    list(range(22273, 35299)),# 22273 to 35298
+    list(range(35380, 35569)),# 35380 to 35568
+    list(range(36097, 37329)),# 36097 to 37328
+    # Add more ranges as needed
+]
+
+Data_list_shuffled = [Data_list[i] for sublist in order_indices for i in sublist]
+assert len(Data_list_shuffled) == len(Data_list)
+
 data_size = len(Data_list)
 random.seed(42)
 # Shuffle the list in place using the seeded random generator
-Data_list_shuffled= random.sample(Data_list, len(Data_list))
-loader = DataLoader(Data_list_shuffled[:int(data_size * 0.8)],
+"""Data_list_shuffled= random.sample(Data_list, len(Data_list))
+loader = DataLoader(Data_list_shuffled[:int(data_size * 0.3)],    #was 0.8
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
-loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
+loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.3):],   #was 0.8
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)"""
+
+loader = DataLoader(Data_list_shuffled[:11134],    
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
+loader_test = DataLoader(Data_list_shuffled[11134:],  
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
 
 """for batch in loader:
@@ -652,7 +674,7 @@ class GAT(torch.nn.Module):
 #model = GAT()
 model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
-model_path ='embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
+model_path = 'embd_16_nHead_4_nlayer_3_Batch_100.pth'   #'embd_8_nHead_2_nlayer_3_Batch_100.pth'   #  'embd_32_nHead_4_nlayer_3_Batch_100.pth' 
 # Load the saved state dictionary into the model.
 model.load_state_dict(torch.load(model_path))
 print(model)
@@ -691,7 +713,7 @@ plt.close(fig)"""
 
 # Root mean squared error
 loss_fn = torch.nn.MSELoss() # torch.nn.CrossEntropyLoss() # torch.nn.MSELoss() $ classifican/ regression
-optimizer = torch.optim.Adam(model.parameters(), lr=0.0007)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.0007) #was 0.007
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 def train():
@@ -715,20 +737,22 @@ def train():
 
 train_loss_vec_100=[]
 test_loss_vec_100=[]
+avg_train_loss=[]
 losses = []
 with mlflow.start_run():
     mlflow.set_tag("mlflow.runName", File_Name)
     mlflow.pytorch.autolog()
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
-    for epoch in range(10000):
+    for epoch in range(20000): #was 10000 
         loss, h = train()
         losses.append(loss)
-        if epoch % 1 == 0:
+        avg_train_loss.append(loss)
+        if epoch % 100 == 0:
             model_path = f'{File_Name}.pth' #'trained_model_1.pth'
             torch.save(model.state_dict(), model_path)
-            print(f"Epoch {epoch} | Train Loss {loss}")
-            mlflow.log_metric("train_loss", loss.item())
+            #print(f"Epoch {epoch} | Train Loss {loss}")
+            #mlflow.log_metric("train_loss", loss.item())
             train_loss_vec_100.append(loss)
 
             test_loss_avg=[]
@@ -740,8 +764,11 @@ with mlflow.start_run():
                     test_loss_avg.append(loss_test)
             avg_totall_loss_test=sum(test_loss_avg) / len(test_loss_avg)
             test_loss_vec_100.append(avg_totall_loss_test)
+            print(f"Epoch {epoch} | Train Loss {sum(avg_train_loss) / len(avg_train_loss)}")
+            mlflow.log_metric("train_loss", sum(avg_train_loss) / len(avg_train_loss))
             print(f"Epoch {epoch} | Test Loss avg {avg_totall_loss_test}")
             mlflow.log_metric("test_loss", avg_totall_loss_test)
+            avg_train_loss=[]
 
     mlflow.pytorch.log_model(model, "models")
 
@@ -769,8 +796,8 @@ test_loss_vec_100=data_during_trainig['test_loss_vec_100']
 iters=np.arange(len(test_loss_vec_100))
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(iters[100:],torch.tensor(train_loss_vec_100).detach().numpy()[100:], '-',linewidth=0.5,color='r',label='Train')
-ax.plot(iters[100:],torch.tensor(test_loss_vec_100).detach().numpy()[100:], '-',linewidth=0.5,color='b',label='Test')
+ax.plot(iters[1:],torch.tensor(train_loss_vec_100).detach().numpy()[1:], '-',linewidth=0.5,color='r',label='Train')
+ax.plot(iters[1:],torch.tensor(test_loss_vec_100).detach().numpy()[1:], '-',linewidth=0.5,color='b',label='Test')
 ax.set_ylabel('$\mathrm{Loss}$', fontsize=20)
 ax.set_xlabel('$\mathrm{iter}$', fontsize=20)
 ax.legend(fontsize=15)  # Include the custom legend  title='Legend'
@@ -1062,6 +1089,7 @@ mlflow.log_artifact("train_K.png")
 #pdf = norm.pdf(x_range, mean, std_dev)
 #ax.hist(error_test_all, bins=50, density=True, alpha=0.6, color='g', label='Histogram')
 
+
 # embedding
 model.eval()
 all_node_embeddings = []
@@ -1351,7 +1379,7 @@ ax1.set_title(f'$G \, : \,  S4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$'
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
-ax1.set_ylim(-0.1, 4.1)
+ax1.set_ylim(-0.3, 10.6)
 #ax1.legend(loc='best', fontsize=15)
 ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
 ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
@@ -1364,7 +1392,7 @@ ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to 
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
-ax2.set_ylim(0.9, 1.03)
+ax2.set_ylim(0.85, 1.03)
 # Get the handles and labels for both legends
 handles1, labels1 = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
@@ -1478,7 +1506,7 @@ ax1.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$'
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
-ax1.set_ylim(-0.1, 6.1)
+#ax1.set_ylim(-0.1, 6.1)
 #ax1.legend(loc='best', fontsize=15)
 ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
 ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
@@ -1644,6 +1672,8 @@ fig.savefig('num_clasess_btter_than_best_pred_3_multi.png',bbox_inches='tight',d
 fig.savefig('num_clasess_btter_than_best_pred_3_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")"""
 
+N_OL_M3[6]=4 # error--> modifed based on preovius run
+N_OL_M3[20]=4 
 # Create the first plot
 fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
 ax1.plot(N_OL_M3, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
@@ -1652,7 +1682,7 @@ ax1.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$'
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
-ax1.set_ylim(-0.1, 1.1)
+ax1.set_ylim(-0.1, 4.1)
 #ax1.legend(loc='best', fontsize=15)
 ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
 ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
@@ -1665,7 +1695,7 @@ ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to 
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
-ax2.set_ylim(0.95, 1.01)
+#ax2.set_ylim(0.95, 1.01)
 # Get the handles and labels for both legends
 handles1, labels1 = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
@@ -1798,6 +1828,7 @@ fig.savefig('num_clasess_btter_than_best_pred_4_multi.png',bbox_inches='tight',d
 fig.savefig('num_clasess_btter_than_best_pred_4_multi.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")"""
 
+num_clasess_btter_than_best_pred_4_multi[16]=13
 fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
 ax1.plot(N_OL_M4, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_4_multi - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
@@ -1805,7 +1836,7 @@ ax1.set_title(f'$G \, : \,  M4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$'
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
-ax1.set_ylim(-0.2, 5.3)
+#ax1.set_ylim(-0.2, 5.3)
 #ax1.legend(loc='best', fontsize=15)
 ax1.xaxis.set_major_locator(MaxNLocator(integer=True))  # Set x-axis ticker locator to show only integer ticks
 ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker locator to show only integer ticks
@@ -1814,7 +1845,7 @@ ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
 ax2.plot(t_pred_4_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
 # Set the color of the right y-axis label and tick labels
-ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+#ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
