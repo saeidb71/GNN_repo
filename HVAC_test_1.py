@@ -796,10 +796,10 @@ test_loss_vec_100=data_during_trainig['test_loss_vec_100']
 iters=np.arange(len(test_loss_vec_100))
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-ax.plot(iters[1:],torch.tensor(train_loss_vec_100).detach().numpy()[1:], '-',linewidth=0.5,color='r',label='Train')
-ax.plot(iters[1:],torch.tensor(test_loss_vec_100).detach().numpy()[1:], '-',linewidth=0.5,color='b',label='Test')
-ax.set_ylabel('$\mathrm{Loss}$', fontsize=20)
-ax.set_xlabel('$\mathrm{iter}$', fontsize=20)
+ax.plot(iters[1:],torch.tensor(train_loss_vec_100).detach().numpy()[1:], '-o',linewidth=1.5,color='r',label='Train')
+ax.plot(iters[1:],torch.tensor(test_loss_vec_100).detach().numpy()[1:], '-o',linewidth=1.5,color='b',label='Test')
+ax.set_ylabel('$\mathrm{Loss}_{\mathrm{avg}}$', fontsize=20)
+ax.set_xlabel('$100 \\times \\mathrm{iter}$', fontsize=20)
 ax.legend(fontsize=15)  # Include the custom legend  title='Legend'
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('Loss.png',bbox_inches='tight',dpi=300)
@@ -858,14 +858,14 @@ for g in np.arange(len(distrbPop_6)):
      y_val_all=t_allPop_6[:,g]
      x_val=g*np.ones(len(y_val_all))
      ax.plot(y_val_all,'o',markersize=3.0)
-ax.plot(pred_best_class_6,pred_6_best,'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
-ax.plot(Label_6,t_allPop_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best}$',color='g')
+ax.plot(pred_best_class_6,pred_6_best,'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best \, \, :} \, \, J(G_{\hat{i}^{*}}) $',color='r')
+ax.plot(Label_6,t_allPop_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best\,\, :} \, \, J(G_{i^{*}})$',color='g')
 ax.axhline(y=pred_6_best, color='r', linestyle='--')
 ax.axhline(y=t_allPop_6[Label_6.astype(int),0], color='g', linestyle='--')
-ax.set_title(f'$N_{{\mathrm{{sub}}}}\,:\, {num_clasess_btter_than_best_pred_6_single[0].astype(int)-1} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{sub}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*(num_clasess_btter_than_best_pred_6_single[0].astype(int)-1)/y_val_all.shape[0],2)}\,\, , \,\, t_{{\mathrm{{PB}}}}/t_{{\mathrm{{TB}}}} \, : \,{np.round(pred_6_best[0]/t_allPop_6[Label_6.astype(int),0][0],3)}   $',fontsize=15) 
+ax.set_title(f'$N_{{\mathrm{{sub}}}}\,:\, {num_clasess_btter_than_best_pred_6_single[0].astype(int)-1} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{sub}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*(num_clasess_btter_than_best_pred_6_single[0].astype(int)-1)/y_val_all.shape[0],2)}\,\, , \,\, J_{{\mathrm{{PB}}}}/J_{{\mathrm{{TB}}}} \, : \,{np.round(pred_6_best[0]/t_allPop_6[Label_6.astype(int),0][0],3)}   $',fontsize=15) 
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+ax.set_ylabel('$J\, (G_i) \,\,\mathrm{[s]}$',fontsize=20)
 # Create legend handles and labels for the 'o' and 's' points
 ax.legend(loc='best', fontsize=15)
 fig.savefig('all_pop_S6_t.png',bbox_inches='tight',dpi=300)
@@ -874,15 +874,15 @@ mlflow.log_artifact("all_pop_S6_t.png")
 
 fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(t_pred_6[:,0],'o',markersize=3.0)
-ax.plot(pred_best_class_6,t_pred_6[pred_best_class_6,0],'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
-ax.plot(Label_6,t_pred_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best}$',color='g')
+ax.plot(pred_best_class_6,t_pred_6[pred_best_class_6,0],'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best\, \, :} \, \, \hat{J}(G_{\hat{i}^{*}}) $',color='r')
+ax.plot(Label_6,t_pred_6[Label_6.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best\,\, :} \, \, \hat{J}(G_{i^{*}})$',color='g')
 ax.axhline(y=t_pred_6[pred_best_class_6,0], color='r', linestyle='--')
 ax.axhline(y=t_pred_6[Label_6.astype(int),0], color='g', linestyle='--')
 ax.tick_params(axis='both', which='major', labelsize=15)
 #ax.set_title(f'$\mathrm{{Num\,\, Graphs\,}}:\, {y_val_all.shape[0]} \, \, , \, \, N_{{\mathrm{{OL}}}}\,: \, {N_OL_S6}  $',fontsize=15) 
 ax.set_title(f'$N_{{\mathrm{{OL}}}}\,:\, {N_OL_S6} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{OL}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*N_OL_S6/y_val_all.shape[0],2)}  $',fontsize=15) 
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$\hat{t}\,\, \mathrm{[s]}$',fontsize=20)
+ax.set_ylabel('$\hat{J}\, (G_i) \,\,\mathrm{[s]}$',fontsize=20)
 # Create legend handles and labels for the 'o' and 's' points
 ax.legend(loc='lower left', fontsize=15)
 fig.savefig('all_pop_S6_t_hat.png',bbox_inches='tight',dpi=300)
@@ -912,7 +912,7 @@ ax.set_xticklabels(tick_labels, fontsize=15)
 ax.set_yticks(tick_locations)
 ax.set_yticklabels(tick_labels, fontsize=15)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{S6}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_S6,2)}  $',fontsize=15) 
+ax.set_title(f'$\mathrm{{Case}} \, : \, S_6 \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_S6,2)}  $',fontsize=15) 
 ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
 ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
 ax.set_xlim(0.4, 100.4)
@@ -1075,7 +1075,7 @@ ax.set_xticklabels(tick_labels, fontsize=15)
 ax.set_yticks(tick_locations)
 ax.set_yticklabels(tick_labels, fontsize=15)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{All\,\,Train\,\,Data}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {t_true_train_sorted_val_percentileofscoreVec.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_test,2)}  $',fontsize=15) 
+ax.set_title(f'$\mathrm{{Case}} \, : \, \mathrm{{All\,\,Train\,\,Data}} \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {t_true_train_sorted_val_percentileofscoreVec.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_train,2)}  $',fontsize=15) 
 ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
 ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
 ax.set_xlim(0.4, 100.4)
@@ -1132,7 +1132,7 @@ ax.set_xlabel('Embedding 1',fontsize=20)
 ax.set_ylabel('Embedding 2',fontsize=20)
 #ax.set_title('Node Embeddings Visualization')
 #ax.legend()
-ax.legend(handles=custom_legend,loc='upper right')  # Include the custom legend  title='Legend'
+ax.legend(handles=custom_legend,loc='lower left')  # Include the custom legend  title='Legend'
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('graph_embedding.png',bbox_inches='tight',dpi=300)
 fig.savefig('graph_embedding.pdf',bbox_inches='tight',dpi=300)
@@ -1185,12 +1185,12 @@ for g in np.arange(len(distrbPop_3)):
      if (g%5==0):
         y_val_all=t_allPop_3[:,g]
         x_val=g*np.ones(len(y_val_all))
-        ax.plot(x_val,y_val_all,'o',markersize=5)
+        ax.plot(x_val,y_val_all,'o',markersize=4)
 indices = np.arange(0, len(distrbPop_3), 5)
 ax.plot(indices,pred_3_best[indices],'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
-legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+#ax.set_ylabel('$J \, \hat{J}\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$J(G_i)$", "$J(G_{\hat{i}^{*}})$"]
 legend_markers = ['o', 's']
 legend_markersizes = [6, 10]  # Adjust the marker sizes here
 # Create legend handles and labels for the 'o' and 's' points
@@ -1200,8 +1200,9 @@ legend_handles = [
     for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
 ]
 # Add the legend to the plot
-ax.legend(handles=legend_handles, loc='best', fontsize=15)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$G \, : \,  S_3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
 fig.savefig('all_pop_3_labels_pred.png')
 fig.savefig('all_pop_3_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_3_labels_pred.png")
@@ -1243,10 +1244,10 @@ fig.savefig('N_OL_S3.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("N_OL_S3.png")"""
 
 # Create the first plot
-fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 ax1.plot(N_OL_S3, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_3_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
-ax1.set_title(f'$G \, : \,  S3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_title(f'$G \, : \,  S_3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}\, \, , \, \, N_{{\mathrm{{OL}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(N_OL_S3.mean(),2)}\, \, , \, \, N_{{\mathrm{{sub}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(num_clasess_btter_than_best_pred_3_single.mean(),2)}$', fontsize=15)
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
@@ -1257,9 +1258,9 @@ ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker loca
 # Create the second plot with a twin y-axis
 ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
-ax2.plot(pred_3_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_3_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^*})$')
 # Set the color of the right y-axis label and tick labels
-ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+ax2.set_ylabel(r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^*})$', fontsize=20, color='g')  # Change 'red' to your desired color
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
@@ -1271,7 +1272,7 @@ handles2, labels2 = ax2.get_legend_handles_labels()
 handles = handles1 + handles2
 labels = labels1 + labels2
 # Create a single legend
-ax1.legend(handles, labels, loc=(0.4, 0.45), fontsize=15)
+ax1.legend(handles, labels, loc=(0.02, 0.38), fontsize=15)
 # Save or display the combined figure
 fig.savefig('N_tg_Combined_S3.png',bbox_inches='tight',dpi=300)
 fig.savefig('N_tg_Combined_S3.pdf',bbox_inches='tight',dpi=300)
@@ -1327,15 +1328,15 @@ for g in np.arange(len(distrbPop_4)):
      if (g%5==0):
         y_val_all=t_allPop_4[:,g]
         x_val=g*np.ones(len(y_val_all))
-        ax.plot(x_val,y_val_all,'o')
+        ax.plot(x_val,y_val_all,'o',markersize=4)
 indices = np.arange(0, len(distrbPop_4), 5)
 ax.plot(indices,pred_4_best[indices],'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
-legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+#ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$J(G_i)$", "$J(G_{\hat{i}^{*}})$"]
 legend_markers = ['o', 's']
-legend_markersizes = [6, 10]  # Adjust the marker sizes here
+legend_markersizes = [5, 10]  # Adjust the marker sizes here
 # Create legend handles and labels for the 'o' and 's' points
 legend_handles = [
     plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
@@ -1343,8 +1344,9 @@ legend_handles = [
     for marker, markersize, label in zip(legend_markers, legend_markersizes, legend_labels)
 ]
 # Add the legend to the plot
-ax.legend(handles=legend_handles, loc='best', fontsize=15)
 ax.tick_params(axis='both', which='major', labelsize=15)
+ax.legend(handles=legend_handles, loc='best', fontsize=15)
+ax.set_title(f'$G \, : \,  S_4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 fig.savefig('all_pop_4_labels_pred.png',bbox_inches='tight',dpi=300)
 fig.savefig('all_pop_4_labels_pred.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("all_pop_4_labels_pred.png")
@@ -1372,10 +1374,11 @@ fig.savefig('num_clasess_btter_than_best_pred_4_single.pdf',bbox_inches='tight',
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_single.png")"""
 
 # Create the first plot
-fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 ax1.plot(N_OL_S4, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_4_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
-ax1.set_title(f'$G \, : \,  S4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+#ax1.set_title(f'$G \, : \,  S4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_title(f'$G \, : \,  S_4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}\, \, , \, \, N_{{\mathrm{{OL}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(N_OL_S4.mean(),2)}\, \, , \, \, N_{{\mathrm{{sub}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(num_clasess_btter_than_best_pred_4_single.mean(),2)}$', fontsize=15)
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
@@ -1386,9 +1389,10 @@ ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker loca
 # Create the second plot with a twin y-axis
 ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
-ax2.plot(pred_4_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_4_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^*})$')
 # Set the color of the right y-axis label and tick labels
-ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+#ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+ax2.set_ylabel(r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^*})$', fontsize=20, color='g') 
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
@@ -1455,15 +1459,15 @@ fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 for g in np.arange(len(distrbPop_5)):
      y_val_all=t_allPop_5[:,g]
      x_val=g*np.ones(len(y_val_all))
-     ax.plot(x_val,y_val_all,'o')
+     ax.plot(x_val,y_val_all,'o',markersize=4)
 ax.plot(np.arange(len(distrbPop_5)),pred_5_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax.set_title(f'$G \, : \,  S_5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
-legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+#ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$J(G_i)$", "${J}(G_{\hat{i}^{*}})$"]
 legend_markers = ['o', 's']
-legend_markersizes = [6, 10]  # Adjust the marker sizes here
+legend_markersizes = [5, 10]  # Adjust the marker sizes here
 # Create legend handles and labels for the 'o' and 's' points
 legend_handles = [
     plt.Line2D([0], [0], marker=marker, markersize=markersize, linestyle='',
@@ -1499,10 +1503,11 @@ fig.savefig('num_clasess_btter_than_best_pred_5_single.pdf',bbox_inches='tight',
 mlflow.log_artifact("num_clasess_btter_than_best_pred_5_single.png")"""
 
 # Create the first plot
-fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 ax1.plot(N_OL_S5, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_5_single - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
-ax1.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+#ax1.set_title(f'$G \, : \,  S5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_title(f'$G \, : \,  S_5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}\, \, , \, \, N_{{\mathrm{{OL}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(N_OL_S5.mean(),2)}\, \, , \, \, N_{{\mathrm{{sub}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(num_clasess_btter_than_best_pred_5_single.mean(),2)}$', fontsize=15)
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
@@ -1513,13 +1518,14 @@ ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker loca
 # Create the second plot with a twin y-axis
 ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
-ax2.plot(pred_5_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(pred_5_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$')
 # Set the color of the right y-axis label and tick labels
-ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+#ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+ax2.set_ylabel(r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$', fontsize=20, color='g')
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
-ax2.set_ylim(0.95, 1.01)
+ax2.set_ylim(0.90, 1.01)
 # Get the handles and labels for both legends
 handles1, labels1 = ax1.get_legend_handles_labels()
 handles2, labels2 = ax2.get_legend_handles_labels()
@@ -1629,13 +1635,13 @@ for g in np.arange(len(unique_dist_group_multi_3)):
      num_clasess_btter_than_best_pred_3_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_3_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      t_pred_3_multi_gropuped_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
-     ax.plot(x_val,y_val_all,'o')
+     ax.plot(x_val,y_val_all,'o',markersize=4)
 ax.plot(np.arange(len(unique_dist_group_multi_3)),t_pred_3_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax.set_title(f'$G \, : \,  M_3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
-legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+#ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$J(G_i)$", "$J(G_{\hat{i}^{*}})$"]
 legend_markers = ['o', 's']
 legend_markersizes = [6, 10]  # Adjust the marker sizes here
 # Create legend handles and labels for the 'o' and 's' points
@@ -1675,10 +1681,11 @@ mlflow.log_artifact("num_clasess_btter_than_best_pred_3_multi.png")"""
 N_OL_M3[6]=4 # error--> modifed based on preovius run
 N_OL_M3[20]=4 
 # Create the first plot
-fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 ax1.plot(N_OL_M3, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_3_multi - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
-ax1.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+#ax1.set_title(f'$G \, : \,  M3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_title(f'$G \, : \,  M_3 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}\, \, , \, \, N_{{\mathrm{{OL}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(N_OL_M3.mean(),2)}\, \, , \, \, N_{{\mathrm{{sub}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(num_clasess_btter_than_best_pred_3_multi.mean(),2)}$', fontsize=15)
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
@@ -1689,9 +1696,9 @@ ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker loca
 # Create the second plot with a twin y-axis
 ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
-ax2.plot(t_pred_3_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(t_pred_3_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$')
 # Set the color of the right y-axis label and tick labels
-ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+ax2.set_ylabel(r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$', fontsize=20, color='g')
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
@@ -1783,13 +1790,13 @@ for g in np.arange(len(unique_dist_group_multi_4)):
      num_clasess_btter_than_best_pred_4_multi[g] = float(np.sum(y_val_all >= y_val_pred_best))
      t_pred_4_multi_gropuped_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
      t_pred_4_multi_gropuped_best_absolute_val[g]=y_val_pred_best/y_val_all.max()
-     ax.plot(x_val,y_val_all,'o')
+     ax.plot(x_val,y_val_all,'o',markersize=4)
 ax.plot(np.arange(len(unique_dist_group_multi_4)),t_pred_4_multi_gropuped_best,'s',markersize=10,markerfacecolor='none', markeredgewidth=2)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.set_title(f'$G \, : \,  M4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax.set_title(f'$G \, : \,  M_4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
 ax.set_xlabel('$ \# \mathrm{Case}$',fontsize=20)
-ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
-legend_labels = ["$t_g$", "$t_{\hat{g}}$"]
+#ax.set_ylabel('$t\,\, \mathrm{[s]}$',fontsize=20)
+legend_labels = ["$J(G_i)$", "$J(G_{\hat{i}^{*}})$"]
 legend_markers = ['o', 's']
 legend_markersizes = [6, 10]  # Adjust the marker sizes here
 # Create legend handles and labels for the 'o' and 's' points
@@ -1829,10 +1836,10 @@ fig.savefig('num_clasess_btter_than_best_pred_4_multi.pdf',bbox_inches='tight',d
 mlflow.log_artifact("num_clasess_btter_than_best_pred_4_multi.png")"""
 
 num_clasess_btter_than_best_pred_4_multi[16]=13
-fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
+fig, ax1 = plt.subplots(1, 1, figsize=(8, 6))
 ax1.plot(N_OL_M4, 'o', markersize=5, label='$N_{\mathrm{OL}}$')
 ax1.plot(num_clasess_btter_than_best_pred_4_multi - 1, 's', markersize=10, markerfacecolor='none', label='$N_{\mathrm{sub}}$')
-ax1.set_title(f'$G \, : \,  M4 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}$', fontsize=15)
+ax1.set_title(f'$G \, : \,  M_5 \, \, , \, \, N_g \, : \,  {y_val_all.shape[0]}\, \, , \, \, N_{{\mathrm{{OL}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(N_OL_M4.mean(),2)}\, \, , \, \, N_{{\mathrm{{sub}}}}^{{\mathrm{{avg}}}} \, : \,  {np.round(num_clasess_btter_than_best_pred_4_multi.mean(),2)}$', fontsize=15)
 ax1.set_xlabel('$\# \mathrm{Case}$', fontsize=20)
 ax1.set_ylabel('$N$', fontsize=20)
 ax1.tick_params(axis='both', which='major', labelsize=15)
@@ -1843,9 +1850,9 @@ ax1.yaxis.set_major_locator(MaxNLocator(integer=True))  # Set y-axis ticker loca
 # Create the second plot with a twin y-axis
 ax2 = ax1.twinx()
 #ax2.plot(pred_3_best_rel_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
-ax2.plot(t_pred_4_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$t_{\hat{g}}/t_g$')
+ax2.plot(t_pred_4_multi_gropuped_best_absolute_val, 'd',color='g',markersize=4,markerfacecolor='none',label=r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$')
 # Set the color of the right y-axis label and tick labels
-#ax2.set_ylabel(r'$t_{\hat{g}}/t_g$', fontsize=20, color='g')  # Change 'red' to your desired color
+ax2.set_ylabel(r'$J(G_{\hat{i}^{*}}) \, / \, J(G_{i^{*}})$', fontsize=20, color='g')
 for label in ax2.get_yticklabels():
     label.set_color('g')  # Change 'red' to your desired color
 ax2.tick_params(axis='both', which='major', labelsize=15)
@@ -1857,7 +1864,7 @@ handles2, labels2 = ax2.get_legend_handles_labels()
 handles = handles1 + handles2
 labels = labels1 + labels2
 # Create a single legend
-ax1.legend(handles, labels, loc=(0.2, 0.5), fontsize=15)
+ax1.legend(handles, labels, loc=(0.03, 0.5), fontsize=15)
 # Save or display the combined figure
 fig.savefig('N_tg_Combined_M4.png',bbox_inches='tight',dpi=300)
 fig.savefig('N_tg_Combined_M4.pdf',bbox_inches='tight',dpi=300)
