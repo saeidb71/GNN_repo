@@ -36,37 +36,42 @@ from scipy.stats import norm
 import argparse
 import scipy.io
 import pandas as pd
+from GNN_vehicle_regression import GAT_reg
 
-
+#--------------------------------------------------Run in Terminal or Console--------------------------------------------
 # Create an argument parser
-"""parser = argparse.ArgumentParser(description='Vehicle Test Script')
+parser = argparse.ArgumentParser(description='Vehicle Test Script')
 # Add arguments for "x," "y," and "z"
 parser.add_argument('--embedding_size', type=int, required=True, help='Value of embedding_size')
 parser.add_argument('--numHeads', type=int, required=True, help='Value of numHeads')
 parser.add_argument('--num_layers', type=int, required=True, help='Value of num_layers')
 parser.add_argument('--NUM_GRAPHS_PER_BATCH', type=int, required=True, help='Value of NUM_GRAPHS_PER_BATCH')
+parser.add_argument('--trainig_ratio', type=float, required=True, help='Value of NUM_GRAPHS_PER_BATCH')
 # Parse the command-line arguments
 args = parser.parse_args()
 embedding_size=args.embedding_size
 numHeads=args.numHeads
 num_layers=args.num_layers
-NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH"""
+NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH
+trainig_ratio=args.trainig_ratio
 
-embedding_size=16#32
+"""embedding_size=16#16#32
 numHeads=4
 num_layers=3
 NUM_GRAPHS_PER_BATCH=500#100
+trainig_ratio=0.2"""
 
-#python Vehicle_GNN_step_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 500
-
+#python Vehicle_GNN_step_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 500 --trainig_ratio 0.8
 
 print(f"embedding_size: {embedding_size}")
 print(f"numHeads: {numHeads}")
 print(f"num_layers: {num_layers}")
 print(f"NUM_GRAPHS_PER_BATCH: {NUM_GRAPHS_PER_BATCH}")
+print(f"trainig_ratio: {trainig_ratio}")
 
-File_Name=f"Vehicle_embd_{embedding_size}_nHead_{numHeads}_nlayer_{num_layers}_Batch_{NUM_GRAPHS_PER_BATCH}"
+File_Name=f"Vehicle_embd_{embedding_size}_nHead_{numHeads}_nlayer_{num_layers}_Batch_{NUM_GRAPHS_PER_BATCH}_trainig_ratio_{trainig_ratio}"
 
+#--------------------------------------------------Load Data and build feataures--------------------------------------------
 
 my_data = pd.read_csv('Vehicle_Data/my_table_GNN.csv')
 
@@ -77,7 +82,14 @@ list_of_dicts = [{} for _ in range(4359)]
 
 for g in np.arange(4359):
 
-    node_feature_i=Graph_GNN_data[g][0][0][0][0]
+    node_feature_i_matrix=Graph_GNN_data[g][0][0][0][0]
+    numNodes=node_feature_i_matrix.shape[0]
+    numFeatures=1
+    # 1 Features for each node (3x1 - Number of nodes x NUmber of features)
+    node_feature_i=torch.zeros(numNodes,numFeatures,dtype=torch.float)
+    for node_i in np.arange(numNodes):
+         node_feature_i[node_i][0]= np.where(node_feature_i_matrix[node_i]==1)[0][0]
+
     edge_list_i=Graph_GNN_data[g][0][0][0][1]
     L_array_i=Graph_GNN_data[g][0][0][0][2][0]
     L_i = [item for subarray in L_array_i for item in subarray]
@@ -95,11 +107,11 @@ for g in np.arange(4359):
     xop_opt_i=Graph_GNN_data[g][0][0][0][5][0][0][2].flatten()
     exif_flag_i=Graph_GNN_data[g][0][0][0][5][0][0][3].flatten()
 
-    list_of_dicts[g]['node_feature']=torch.from_numpy(node_feature_i).float()
+    list_of_dicts[g]['node_feature']= node_feature_i #torch.from_numpy(node_feature_i).float()
     list_of_dicts[g]['edge_list']=torch.from_numpy(edge_list_i-1).long() 
     list_of_dicts[g]['L']=L_i
     list_of_dicts[g]['A']=A_i
-    list_of_dicts[g]['F']= torch.from_numpy(np.array(F_i)).float() 
+    list_of_dicts[g]['F']= torch.from_numpy(np.array(np.exp(-F_i))).float()  #!!!!!!!!! exp(-F)!!!!!!!!!!!
     list_of_dicts[g]['dict_comp']=dict_comp_i
     list_of_dicts[g]['xop_opt']=xop_opt_i
     list_of_dicts[g]['exif_flag']=exif_flag_i
@@ -117,12 +129,13 @@ for i in np.arange(len(Data_list)):
 
 node_labels_dict = {0: 's', 1: 'u', 2: 'f', 3: 'm', 4: 'p', 5: 'k', 6: 'b', 7:'bk', 8: 'bkk', 9:'bbk' }
 
+#--------------------------------------------------Plot a sample graph--------------------------------------------
 
 g=2000
 node_labels={}
-nodes_position=[np.where(row == 1)[0] for row in Data_list[g].x]
-for i in np.arange(len(nodes_position)):
-     node_labels[i]=node_labels_dict[nodes_position[i][0]]
+nodes_key= Data_list[g].x[:,0] #[np.where(row == 1)[0] for row in Data_list[g].x]
+for i in np.arange(len(nodes_key)):
+     node_labels[i]=node_labels_dict[nodes_key[i].item()]
 #labels = {node: node_labels[i] for i, node in enumerate(graphs_list_nx[g].nodes())}
 nx.draw_networkx(graphs_list_nx[g],labels=node_labels, with_labels=True)
 #list_of_dicts[0]['L']
@@ -135,59 +148,20 @@ data_size = len(Data_list)
 random.seed(42)
 # Shuffle the list in place using the seeded random generator
 Data_list_shuffled= random.sample(Data_list, len(Data_list))
-loader = DataLoader(Data_list_shuffled[:int(data_size * 0.8)],
+loader = DataLoader(Data_list_shuffled[:int(data_size * trainig_ratio)],
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
-loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.8):],
+loader_test = DataLoader(Data_list_shuffled[int(data_size * trainig_ratio):],
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
-
-
-#-----------------------------------------GATConv Model---------------------------------------
-#embedding_size = 16#32#32#32-->saved GAT
-class GAT(torch.nn.Module):
-    def __init__(self, num_layers, num_heads, num_features, embedding_size, num_output):
-        # Init parent
-        super(GAT, self).__init__()
-        torch.manual_seed(41) #41
-
-        # Initialize a list to hold the GATConv layers
-        self.conv_layers = torch.nn.ModuleList()
-        self.conv_layers.append(GATConv(num_features, embedding_size, heads=num_heads))
-
-        # Add additional GATConv layers based on the specified num_layers
-        for _ in range(num_layers - 1):
-            self.conv_layers.append(GATConv(embedding_size * num_heads, embedding_size, heads=num_heads))
-
-        # Output layer
-        self.out = Linear(embedding_size * 3, num_output)
-
-    def forward(self, x, edge_index, batch_index):
-        # Apply the GATConv layers
-        hidden = x
-        for conv_layer in self.conv_layers:
-            hidden = F.tanh(conv_layer(hidden, edge_index))
-
-        # Average over all heads
-        hidden = torch.mean(hidden.view(-1, numHeads, embedding_size), dim=1)
-
-        # Concatenate the pooling results
-        hidden = torch.cat([gmp(hidden, batch_index),
-                            gap(hidden, batch_index),
-                            gadd(hidden, batch_index)], dim=1)
-
-        out = self.out(hidden)  # For regression
-
-        return out, hidden
-
 
 #-----------------model----------------------------
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
     
-model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
+model = GAT_reg(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
-model_path = 'Vehicle_embd_16_nHead_4_nlayer_3_Batch_500.pth' # 'Vehicle_embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
+#model_path = f'{File_Name}.pth'# 'trained_model_1.pth'# 'Vehicle_embd_32_nHead_4_nlayer_3_Batch_100.pth' #'embd_32_nHead_4_nlayer_3_Batch_100.pth' #'trained_model_1_saved_GAT.pth' # 'trained_model_1.pth'
 # Load the saved state dictionary into the model.
-model.load_state_dict(torch.load(model_path))
+#model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -196,7 +170,7 @@ for batch in loader:
        print(batch.edge_index)
        print(batch.batch)
        print(batch.y)
-       print(summary(model, batch.x.float(), batch.edge_index,batch.batch))
+       print(summary(model, batch.x , batch.edge_index,batch.batch)) #batch.x.float()
        break
 
 #-----------------------------------------Test GNN Model---------------------------------------
@@ -219,7 +193,7 @@ def train():
       # Reset gradients
       optimizer.zero_grad()
       # Passing the node features and the connection info
-      pred, embedding = model(batch.x.float(), batch.edge_index, batch.batch)
+      pred, embedding = model(batch.x, batch.edge_index, batch.batch)  #batch.x.float()
       # Calculating the loss and gradients
       loss = loss_fn(pred.flatten(), batch.y.float()) #for regression
       #loss = loss_fn(pred, torch.tensor(batch.y)) #for classification
@@ -228,23 +202,26 @@ def train():
       optimizer.step()
     return loss, embedding
 
-"""print("Starting training...")
+print("Starting training...")
+
 train_loss_vec_100=[]
 test_loss_vec_100=[]
+avg_train_loss=[]
 losses = []
 with mlflow.start_run():
     mlflow.set_tag("mlflow.runName", File_Name)
     mlflow.pytorch.autolog()
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
-    for epoch in range(10000):
+    for epoch in range(5000): #was 5000 
         loss, h = train()
         losses.append(loss)
-        if epoch % 1 == 0:
+        avg_train_loss.append(loss)
+        if epoch % 100 == 0:
             model_path = f'{File_Name}.pth' #'trained_model_1.pth'
             torch.save(model.state_dict(), model_path)
-            print(f"Epoch {epoch} | Train Loss {loss}")
-            mlflow.log_metric("train_loss", loss.item())
+            #print(f"Epoch {epoch} | Train Loss {loss}")
+            #mlflow.log_metric("train_loss", loss.item())
             train_loss_vec_100.append(loss)
 
             test_loss_avg=[]
@@ -256,8 +233,11 @@ with mlflow.start_run():
                     test_loss_avg.append(loss_test)
             avg_totall_loss_test=sum(test_loss_avg) / len(test_loss_avg)
             test_loss_vec_100.append(avg_totall_loss_test)
+            print(f"Epoch {epoch} | Train Loss {sum(avg_train_loss) / len(avg_train_loss)}")
+            mlflow.log_metric("train_loss", sum(avg_train_loss) / len(avg_train_loss))
             print(f"Epoch {epoch} | Test Loss avg {avg_totall_loss_test}")
             mlflow.log_metric("test_loss", avg_totall_loss_test)
+            avg_train_loss=[]
 
     mlflow.pytorch.log_model(model, "models")
 
@@ -265,7 +245,7 @@ model_path = f'{File_Name}.pth'# 'trained_model_1.pth'
 torch.save(model.state_dict(), model_path)
 
 # File path where you want to save the pickled data
-file_path =f'{File_Name}.pkl'# 'data.pkl
+file_path =f'{File_Name}.pkl'# 'data.pkl'
 
 # Serialize and save the object to a file
 data_during_trainig={}
@@ -273,8 +253,7 @@ data_during_trainig['losses']=losses
 data_during_trainig['train_loss_vec_100']=train_loss_vec_100
 data_during_trainig['test_loss_vec_100']=test_loss_vec_100
 with open(file_path, 'wb') as file:
-    pkl.dump(data_during_trainig, file)"""
-
+    pkl.dump(data_during_trainig, file)
 
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
@@ -295,12 +274,15 @@ with torch.no_grad():
     ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
     ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.plot([10, 150], [10, 150],'--', color='gray', linewidth=2, alpha=1.0)
-mean=np.mean(all_errors_test.numpy())
-std_dev = np.std(all_errors_test.numpy())
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_aspect('equal')
+#ax.plot([10, 150], [10, 150],'--', color='gray', linewidth=2, alpha=1.0)
+#mean=np.mean(all_errors_test.numpy())
+#std_dev = np.std(all_errors_test.numpy())
 # Display mean and standard deviation on the plot using ax.text()
-ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
-ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
+#ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
+#ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
 fig.savefig('Vehicle_test_data_learned_model.png',bbox_inches='tight',dpi=300)
 fig.savefig('Vehicle_test_data_learned_model.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("Vehicle_test_data_learned_model.png")
@@ -320,12 +302,15 @@ with torch.no_grad():
     ax.set_ylabel('$\hat{t} \,\, \mathrm{[s]}$', fontsize=20)
     ax.set_xlabel('$t\,\, \mathrm{[s]}$', fontsize=20)
 ax.tick_params(axis='both', which='major', labelsize=15)
-ax.plot([8, 155], [8, 155],'--', color='gray', linewidth=2, alpha=1.0)
-mean=np.mean(all_errors_train.numpy())
-std_dev = np.std(all_errors_train.numpy())
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_aspect('equal')
+#ax.plot([8, 155], [8, 155],'--', color='gray', linewidth=2, alpha=1.0)
+#mean=np.mean(all_errors_train.numpy())
+#std_dev = np.std(all_errors_train.numpy())
 # Display mean and standard deviation on the plot using ax.text()
-ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
-ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
+#ax.text(0.1, 0.9, r'$\mu$ = {:.2f}'.format(mean), transform=ax.transAxes, fontsize=15)
+#ax.text(0.1, 0.85, r'$\sigma$ = {:.2f}'.format(std_dev), transform=ax.transAxes, fontsize=15)
 fig.savefig('Vehicle_train_data_learned_model.png',bbox_inches='tight',dpi=300)
 fig.savefig('Vehicle_train_data_learned_model.pdf',bbox_inches='tight',dpi=300)
 mlflow.log_artifact("Vehicle_train_data_learned_model.png")
