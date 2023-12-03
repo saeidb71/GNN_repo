@@ -104,16 +104,17 @@ except:
     Model_type=0
     regres_or_classif=1
     embedding_size=64
-    numHeads=1
-    num_layers=3
+    numHeads=4
+    num_layers=2
     NUM_GRAPHS_PER_BATCH=4 #4
     p_known=0.2
     training_split=0.8 
-    epochs=60000#600 
+    epochs=600#600 
     n=1
 
 File_Name=f"Mdltype_{Model_type}_reg/class_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
 #python run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 1 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 60000 --n 1
+Train_or_Check=0; #Train: 1 , Test : 0
 
 print('-----------------------------------Config Start-------------------------------------------')
 print(f"Model_type: {Model_type}")
@@ -160,6 +161,9 @@ for run in range(0,n):
             model = GCN_Model(num_layers, num_features, embedding_size, num_output).to(device)
         elif Model_type==0:
             model=GAT_Model(num_layers, num_features, embedding_size, num_output,numHeads).to(device)
+        if Train_or_Check==0:
+            model_path = f'{File_Name}.pth' 
+            model.load_state_dict(torch.load(model_path))
         print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) #0.001
         #optimizer=torch.optim.SGD(model.parameters(), lr=0.001)
@@ -234,45 +238,208 @@ for run in range(0,n):
 
 
         #mlflow.create_experiment(File_Name)
-        with mlflow.start_run():
-            mlflow.set_tag("mlflow.runName", File_Name)
-            mlflow.log_param("Model_type", Model_type)
-            mlflow.log_param("regres_or_classif", regres_or_classif)
-            mlflow.log_param("embedding_size", embedding_size)
-            mlflow.log_param("numHeads", numHeads)
-            mlflow.log_param("num_layers", num_layers)
-            mlflow.log_param("p_known", p_known)
-            mlflow.log_param("training_split", training_split)
-            mlflow.log_param("epochs", epochs)
-            mlflow.log_param("n", n)
+        if Train_or_Check==1:
+            with mlflow.start_run():
+                mlflow.set_tag("mlflow.runName", File_Name)
+                mlflow.log_param("Model_type", Model_type)
+                mlflow.log_param("regres_or_classif", regres_or_classif)
+                mlflow.log_param("embedding_size", embedding_size)
+                mlflow.log_param("numHeads", numHeads)
+                mlflow.log_param("num_layers", num_layers)
+                mlflow.log_param("p_known", p_known)
+                mlflow.log_param("training_split", training_split)
+                mlflow.log_param("epochs", epochs)
+                mlflow.log_param("n", n)
 
-            for epoch in tqdm(range(1, epochs + 1), total=epochs):
-                train_loss=train()
-                if (epoch-1) % 10 == 0:  
-                    train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
-                    val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
-                    test_loss,test_acc = test(unknown_loader,regres_or_classif,known_median)    
+                for epoch in tqdm(range(1, epochs + 1), total=epochs):
+                    train_loss=train()
+                    if (epoch-1) % 10 == 0:  
+                        train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
+                        val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
+                        test_loss,test_acc = test(unknown_loader,regres_or_classif,known_median)    
 
-                    print('-----------------------------------Training Start-------------------------------------------')
-                    print(f"train_loss : {train_loss_noDropOut} , train_acc : {train_acc}")
-                    print(f"val_loss : {val_loss} , val_acc : {val_acc}")
-                    print(f"test_loss : {test_loss} , test_acc : {test_acc}")
-                    print('-----------------------------------Training End-------------------------------------------')
+                        print('-----------------------------------Training Start-------------------------------------------')
+                        print(f"train_loss : {train_loss_noDropOut} , train_acc : {train_acc}")
+                        print(f"val_loss : {val_loss} , val_acc : {val_acc}")
+                        print(f"test_loss : {test_loss} , test_acc : {test_acc}")
+                        print('-----------------------------------Training End-------------------------------------------')
 
-                    mlflow.log_metric("train_loss", train_loss_noDropOut)
-                    mlflow.log_metric("train_acc", train_acc)
-                    mlflow.log_metric("val_loss", val_loss)
-                    mlflow.log_metric("val_acc", val_acc)
-                    mlflow.log_metric("test_loss", test_loss)
-                    mlflow.log_metric("test_acc", test_acc)
-                    #print(f"train_loss : {train_loss}")
-                    #mlflow.log_metric("train_loss", train_loss)
+                        mlflow.log_metric("train_loss", train_loss_noDropOut)
+                        mlflow.log_metric("train_acc", train_acc)
+                        mlflow.log_metric("val_loss", val_loss)
+                        mlflow.log_metric("val_acc", val_acc)
+                        mlflow.log_metric("test_loss", test_loss)
+                        mlflow.log_metric("test_acc", test_acc)
+                        #print(f"train_loss : {train_loss}")
+                        #mlflow.log_metric("train_loss", train_loss)
                 
-            model_path = f'{File_Name}.pth' #'trained_model_1.pth'
-            torch.save(model.state_dict(), model_path)
-            #mlflow.pytorch.log_model(model, "models")
-            mlflow.pytorch.autolog()
+                model_path = f'{File_Name}.pth' #'trained_model_1.pth'
+                torch.save(model.state_dict(), model_path)
+                #mlflow.pytorch.log_model(model, "models")
+                mlflow.pytorch.autolog()
         
+        model.eval()
+
+        out_known_train=np.zeros(len(training_loader))
+        Label_known_train=np.zeros(len(training_loader))
+        Loss_known_train=np.zeros(len(training_loader))
+        out_Class_known_train=np.zeros(len(training_loader))
+        Label_Class_known_train=np.zeros(len(training_loader))
+        Correct_known_train=np.zeros(len(training_loader))
+
+        out_known_validation=np.zeros(len(validation_loader))
+        Label_known_validation=np.zeros(len(validation_loader))
+        Loss_known_validation=np.zeros(len(validation_loader))
+        out_Class_known_validation=np.zeros(len(validation_loader))
+        Label_Class_known_validation=np.zeros(len(validation_loader))
+        Correct_known_validation=np.zeros(len(validation_loader))
+
+        out_unknown=np.zeros(len(unknown_loader))
+        Label_unknown=np.zeros(len(unknown_loader))
+        Loss_unknown=np.zeros(len(unknown_loader))
+        out_Class_unknown=np.zeros(len(unknown_loader))
+        Label_Class_unknown=np.zeros(len(unknown_loader))
+        Correct_unknown=np.zeros(len(unknown_loader))
+
+        with torch.no_grad():
+            for i in np.arange(len(training_loader)):
+                data=training[i]
+                data = data.to(device)
+                out = model(data.x, data.edge_index, data.batch).flatten()
+                loss= criterion(out, data.y)  
+                if regres_or_classif==0: #classification
+                    pred = out.argmax(dim=1) 
+                    correct = int((pred == data.y).sum()) 
+                elif regres_or_classif==1: #regression
+                    class_label=data.y>known_median 
+                    predict_label=out>known_median
+                    correct = (class_label==predict_label)
+                out_known_train[i]=out
+                Label_known_train[i]=data.y
+                Loss_known_train[i]=loss
+                out_Class_known_train[i]=predict_label
+                Label_Class_known_train[i]=class_label
+                Correct_known_train[i]=correct
+        known_train_matrix=np.zeros((2,2))
+        known_train_matrix[0][0]=len(np.intersect1d(np.where(out_known_train > known_median)[0], np.where(Label_known_train < known_median)[0]))
+        known_train_matrix[0][1]=len(np.intersect1d(np.where(out_known_train >= known_median)[0], np.where(Label_known_train >= known_median)[0]))
+        known_train_matrix[1][0]=len(np.intersect1d(np.where(out_known_train < known_median)[0], np.where(Label_known_train < known_median)[0]))
+        known_train_matrix[1][1]=len(np.intersect1d(np.where(out_known_train <= known_median)[0], np.where(Label_known_train >= known_median)[0]))
+
+        with torch.no_grad():
+            for i in np.arange(len(validation_loader)):
+                data=validation[i]
+                data = data.to(device)
+                out = model(data.x, data.edge_index, data.batch).flatten()
+                loss= criterion(out, data.y)  
+                if regres_or_classif==0: #classification
+                    pred = out.argmax(dim=1) 
+                    correct = int((pred == data.y).sum()) 
+                elif regres_or_classif==1: #regression
+                    class_label=data.y>known_median 
+                    predict_label=out>known_median
+                    correct = (class_label==predict_label)
+                out_known_validation[i]=out
+                Label_known_validation[i]=data.y
+                Loss_known_validation[i]=loss
+                out_Class_known_validation[i]=predict_label
+                Label_Class_known_validation[i]=class_label
+                Correct_known_validation[i]=correct
+        known_validation_matrix=np.zeros((2,2))
+        known_validation_matrix[0][0]=len(np.intersect1d(np.where(out_known_validation > known_median)[0], np.where(Label_known_validation < known_median)[0]))
+        known_validation_matrix[0][1]=len(np.intersect1d(np.where(out_known_validation >= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
+        known_validation_matrix[1][0]=len(np.intersect1d(np.where(out_known_validation < known_median)[0], np.where(Label_known_validation < known_median)[0]))
+        known_validation_matrix[1][1]=len(np.intersect1d(np.where(out_known_validation <= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
+
+        with torch.no_grad():
+            for i in np.arange(len(unknown_loader)):
+                data=unknown_torch[i]
+                data = data.to(device)
+                out = model(data.x, data.edge_index, data.batch).flatten()
+                loss= criterion(out, data.y)  
+                if regres_or_classif==0: #classification
+                    pred = out.argmax(dim=1) 
+                    correct = int((pred == data.y).sum()) 
+                elif regres_or_classif==1: #regression
+                    class_label=data.y>known_median 
+                    predict_label=out>known_median
+                    correct = (class_label==predict_label)
+                out_unknown[i]=out
+                Label_unknown[i]=data.y
+                Loss_unknown[i]=loss
+                out_Class_unknown[i]=predict_label
+                Label_Class_unknown[i]=class_label
+                Correct_unknown[i]=correct
+        unknown_matrix=np.zeros((2,2))
+        unknown_matrix[0][0]=len(np.intersect1d(np.where(out_unknown> known_median)[0], np.where(Label_unknown < known_median)[0]))
+        unknown_matrix[0][1]=len(np.intersect1d(np.where(out_unknown >= known_median)[0], np.where(Label_unknown >= known_median)[0]))
+        unknown_matrix[1][0]=len(np.intersect1d(np.where(out_unknown < known_median)[0], np.where(Label_unknown < known_median)[0]))
+        unknown_matrix[1][1]=len(np.intersect1d(np.where(out_unknown <= known_median)[0], np.where(Label_unknown>= known_median)[0]))
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        ax.plot(Label_known_train,out_known_train, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
+        ax.set_xlabel('$\mathrm{True}$', fontsize=20)
+        left_corner_ax = fig.add_axes([0.12, 0.65, 0.2, 0.2])  # Adjust the position and size as needed
+        left_corner_ax.imshow(known_train_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(known_train_matrix), vmax=np.max(known_train_matrix))
+        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
+        for i in range(2):
+            for j in range(2):
+                left_corner_ax.text(j, i, f'{known_train_matrix[i, j]:.0f}', ha='center', va='center', color='black')
+        left_corner_ax.set_xticks([])
+        left_corner_ax.set_yticks([])
+        left_corner_ax.set_xticklabels([])
+        left_corner_ax.set_yticklabels([])
+        ax.set_title(f'$ \mathrm{{Known-Train}}  \, \, , \, \, \mathrm{{Loss}} \, \, : \, \, {np.round(Loss_known_train.mean(),2)} \, \, , \,\, \mathrm{{Acc}} \, \, : \, \, {np.round(len(np.where(Correct_known_train==1)[0])/len(training_loader),2)}$')
+        fig.savefig('Known_Train.png',bbox_inches='tight',dpi=300)
+        fig.savefig('Known_Train.pdf',bbox_inches='tight',dpi=300)
+
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        ax.plot(Label_known_validation,out_known_validation, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
+        ax.set_xlabel('$\mathrm{True}$', fontsize=20)
+        left_corner_ax = fig.add_axes([0.12, 0.65, 0.2, 0.2])  # Adjust the position and size as needed
+        left_corner_ax.imshow(known_validation_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(known_validation_matrix), vmax=np.max(known_validation_matrix))
+        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
+        for i in range(2):
+            for j in range(2):
+                left_corner_ax.text(j, i, f'{known_validation_matrix[i, j]:.0f}', ha='center', va='center', color='black')
+        left_corner_ax.set_xticks([])
+        left_corner_ax.set_yticks([])
+        left_corner_ax.set_xticklabels([])
+        left_corner_ax.set_yticklabels([])
+        ax.set_title(f'$ \mathrm{{Known-Validation}}  \, \, , \, \, \mathrm{{Loss}} \, \, : \, \, {np.round(Loss_known_validation.mean(),2)} \, \, , \,\, \mathrm{{Acc}} \, \, : \, \, {np.round(len(np.where(Correct_known_validation==1)[0])/len(validation_loader),2)}$')
+        fig.savefig('Known_Valid.png',bbox_inches='tight',dpi=300)
+        fig.savefig('Known_Valid.pdf',bbox_inches='tight',dpi=300)
+
+        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+        ax.plot(Label_unknown,out_unknown, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
+        ax.set_xlabel('$\mathrm{True}$', fontsize=20)
+        left_corner_ax = fig.add_axes([0.12, 0.67, 0.2, 0.2])  # Adjust the position and size as needed
+        left_corner_ax.imshow(unknown_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(unknown_matrix), vmax=np.max(unknown_matrix))
+        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
+        for i in range(2):
+            for j in range(2):
+                left_corner_ax.text(j, i, f'{unknown_matrix[i, j]:.0f}', ha='center', va='center', color='black')
+        left_corner_ax.set_xticks([])
+        left_corner_ax.set_yticks([])
+        left_corner_ax.set_xticklabels([])
+        left_corner_ax.set_yticklabels([])
+        ax.set_title(f'$ \mathrm{{Unknown}}  \, \, , \, \, \mathrm{{Loss}} \, \, : \, \, {np.round(Loss_unknown.mean(),2)} \, \, , \,\, \mathrm{{Acc}} \, \, : \, \, {np.round(len(np.where(Correct_unknown==1)[0])/len(unknown_loader),2)}$')
+        fig.savefig('Unknown.png',bbox_inches='tight',dpi=300)
+        fig.savefig('Unknown.pdf',bbox_inches='tight',dpi=300)
+
+
+
+        k=1
 
 
 
