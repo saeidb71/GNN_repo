@@ -36,7 +36,7 @@ def train():
     total_loss = 0
     for data in training_loader:
         data = data.to(device)
-        out = model(data.x, data.edge_index, data.batch)  
+        out = model(data.x, data.edge_index, data.batch).flatten()  
         loss = criterion(out, data.y)  
         loss.backward()  
         optimizer.step()  
@@ -59,7 +59,7 @@ def test(loader,regres_or_classif,known_median):
         correct = 0
         for data in loader: 
             data = data.to(device)
-            out = model(data.x, data.edge_index, data.batch)
+            out = model(data.x, data.edge_index, data.batch).flatten()
             loss_test = criterion(out, data.y)  
             total_loss+=loss_test.detach().item()*len(data)
             if regres_or_classif==0: #classification
@@ -67,7 +67,7 @@ def test(loader,regres_or_classif,known_median):
                 correct += int((pred == data.y).sum()) 
             elif regres_or_classif==1: #regression
                 class_label=data.y>known_median 
-                predict_label=out.flatten()>known_median
+                predict_label=out>known_median
                 correct += int((predict_label == class_label).sum())  
 
     return total_loss/len(loader.dataset) , correct / len(loader.dataset) 
@@ -248,7 +248,7 @@ for run in range(0,n):
 
             for epoch in tqdm(range(1, epochs + 1), total=epochs):
                 train_loss=train()
-                if (epoch-1) % 100 == 0:  
+                if (epoch-1) % 10 == 0:  
                     train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
                     val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
                     test_loss,test_acc = test(unknown_loader,regres_or_classif,known_median)    
