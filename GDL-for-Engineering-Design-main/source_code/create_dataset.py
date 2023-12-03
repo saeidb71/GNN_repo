@@ -84,16 +84,16 @@ class IterationDataset(InMemoryDataset):
             if value in mapping_dict:
                 component_labels.append(mapping_dict[value])
 
-        new_node_feature_hot_key = [[1 if i == label else 0 for i in range(6)] for label in component_labels]
+        """new_node_feature_hot_key = [[1 if i == label else 0 for i in range(6)] for label in component_labels]"""
 
-        #all_features = zip(betweenness, eigenvector, component_labels)
-        all_features = zip(betweenness, eigenvector, 
+        all_features = zip(betweenness, eigenvector, component_labels)
+        """all_features = zip(betweenness, eigenvector, 
                            list(np.array(new_node_feature_hot_key)[:,0]),
                            list(np.array(new_node_feature_hot_key)[:,1]),
                            list(np.array(new_node_feature_hot_key)[:,2]),
                            list(np.array(new_node_feature_hot_key)[:,3]),
                            list(np.array(new_node_feature_hot_key)[:,4]),
-                           list(np.array(new_node_feature_hot_key)[:,5]))
+                           list(np.array(new_node_feature_hot_key)[:,5]))"""
         all_features = dict(enumerate(all_features))
 
         nx.set_node_attributes(nx_graph, all_features, 'features')
@@ -110,14 +110,14 @@ class IterationDataset(InMemoryDataset):
             return torch.tensor(np.exp(-performance), dtype=torch.float)
             #return torch.tensor(performance, dtype=torch.float)
         else:
-            if performance < threshold:
+            if np.exp(-performance) > threshold:
                 return torch.tensor(1, dtype=torch.long)
             else:
                 return torch.tensor(0, dtype=torch.long)
     
     @property
     def num_node_features(self) -> int:
-        return 8#3
+        return 3#8
 
     @property
     def num_classes(self) -> int:

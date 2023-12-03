@@ -32,48 +32,39 @@ def custom_loss(outputs, targets, p):
     # Calculate mean squared error
     c=torch.nn.L1Loss()
     L1_loss=c(outputs, targets)
-
     penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
                                     torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
-
-
     # Combine the MSE loss and the penalty term
     total_loss = L1_loss + 2*penalty.mean()
-
     return total_loss
 
-plot_i=0
-def train():
-    global plot_i 
+def train(regres_or_classif):
     model.train()
-
     total_loss = 0
     for data in training_loader:
         data = data.to(device)
-        out = model(data.x, data.edge_index, data.batch).flatten()  
+        if regres_or_classif==1:
+            out = model(data.x, data.edge_index, data.batch).flatten()  
+        else: 
+            out = model(data.x, data.edge_index, data.batch)
         loss = criterion(out, data.y)  
         loss.backward()  
         optimizer.step()  
         optimizer.zero_grad() 
         total_loss+=loss.detach().item()*len(data)
-
-    #if (plot_i % 10)==0:
-    #    plt.plot(data.y,out.detach(),'o')
-    #    plt.show()
-    #plot_i+=1
-    
-
     return total_loss / len(training_loader.dataset) 
 
 def test(loader,regres_or_classif,known_median):
     model.eval()
-
     total_loss=0
     with torch.no_grad():
         correct = 0
         for data in loader: 
             data = data.to(device)
-            out = model(data.x, data.edge_index, data.batch).flatten()
+            if regres_or_classif==1:
+                out = model(data.x, data.edge_index, data.batch).flatten()
+            else:
+                out = model(data.x, data.edge_index, data.batch)
             loss_test = criterion(out, data.y)  
             total_loss+=loss_test.detach().item()*len(data)
             if regres_or_classif==0: #classification
@@ -83,7 +74,6 @@ def test(loader,regres_or_classif,known_median):
                 class_label=data.y>known_median 
                 predict_label=out>known_median
                 correct += int((predict_label == class_label).sum())  
-
     return total_loss/len(loader.dataset) , correct / len(loader.dataset) 
 
 #--------------------------------------------------Run in Terminal or Console--------------------------------------------
@@ -117,18 +107,30 @@ try:
 except:
     Model_type=0
     regres_or_classif=1
-    embedding_size=64
-    numHeads=4
+    embedding_size=4#64
+    numHeads=1#4
     num_layers=2
     NUM_GRAPHS_PER_BATCH=4 #4
     p_known=0.2
     training_split=0.8 
-    epochs=600#600 
+    epochs=10#600 
     n=1
 
-File_Name=f"Mdltype_{Model_type}_reg/class_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
-#python run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 1 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 60000 --n 1
+File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
+#python run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
+
 Train_or_Check=1; #Train: 1 , Test : 0
+# Set up early stopping parameters
+early_stopping_counter = 0
+best_val_accuracy = 0.0
+patience = 7  # Number of consecutive iterations without improvement to tolerate
+break_outer = False
+# Define Intermediate variables
+num_features= 3#8 # number of node features
+if regres_or_classif==0:
+    num_output=2 #classification
+elif regres_or_classif==1:
+    num_output=1 #regression
 
 print('-----------------------------------Config Start-------------------------------------------')
 print(f"Model_type: {Model_type}")
@@ -143,15 +145,6 @@ print(f"epochs: {epochs}")
 print(f"n: {n}")
 print(f"File_Name : {File_Name}")
 print('-----------------------------------Config End-------------------------------------------')
-
-# Define Intermediate variables
-num_features= 8#3 # number of node features
-
-if regres_or_classif==0:
-    num_output=2 #classification
-elif regres_or_classif==1:
-    num_output=1 #regression
-
 
 raw_data = loadmat('data/analog_circuits/circuit_data.mat', squeeze_me=True) #raw_data['Graphs'][0]['A'] #raw_data['Graphs'][0]['Labels']
 data = pd.DataFrame(raw_data['Graphs'])
@@ -242,13 +235,11 @@ for run in range(0,n):
             print('Error')
         
         if regres_or_classif==0: #classification
-            known_torch = IterationDataset(root='known_data_classif', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
-            unknown_torch = IterationDataset(root='unknown_data_classif', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None)  #unknown_torch[0]
+            known_torch = IterationDataset(root=f'known_data_classif_p{p_known}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
+            unknown_torch = IterationDataset(root=f'unknown_data_classif_p{p_known}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None)  #unknown_torch[0]
         elif regres_or_classif==1: #refression
-            known_torch = IterationDataset(root='known_data_reg', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
-            unknown_torch = IterationDataset(root='unknown_data_reg', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
-
-
+            known_torch = IterationDataset(root=f'known_data_reg_p{p_known}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
+            unknown_torch = IterationDataset(root=f'unknown_data_reg_p{p_known}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
 
         training = known_torch[:int(len(known_torch)*training_split)]
         validation = known_torch[int(len(known_torch)*training_split)+1:]
@@ -273,7 +264,7 @@ for run in range(0,n):
                 mlflow.log_param("n", n)
 
                 for epoch in tqdm(range(1, epochs + 1), total=epochs):
-                    train_loss=train()
+                    train_loss=train(regres_or_classif)
                     if (epoch-1) % 10 == 0:  
                         train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
                         val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
@@ -293,6 +284,21 @@ for run in range(0,n):
                         mlflow.log_metric("test_acc", test_acc)
                         #print(f"train_loss : {train_loss}")
                         #mlflow.log_metric("train_loss", train_loss)
+
+                        if val_acc > best_val_accuracy:
+                            best_val_accuracy = val_acc
+                            early_stopping_counter = 0
+                            # Save your model if needed
+                            torch.save(model.state_dict(),  f'{File_Name}_best.pth' )
+                        else:
+                            early_stopping_counter += 1
+
+                        if early_stopping_counter >= patience:
+                            break_outer = True
+                            break
+                    if break_outer:
+                        break
+
                 
                 model_path = f'{File_Name}.pth' #'trained_model_1.pth'
                 torch.save(model.state_dict(), model_path)
@@ -326,7 +332,10 @@ for run in range(0,n):
             for i in np.arange(len(training_loader)):
                 data=training[i]
                 data = data.to(device)
-                out = model(data.x, data.edge_index, data.batch).flatten()
+                if regres_or_classif==1:
+                    out = model(data.x, data.edge_index, data.batch).flatten()
+                else:
+                    out = model(data.x, data.edge_index, data.batch)
                 loss= criterion(out, data.y)  
                 if regres_or_classif==0: #classification
                     pred = out.argmax(dim=1) 
@@ -335,23 +344,38 @@ for run in range(0,n):
                     class_label=data.y>known_median 
                     predict_label=out>known_median
                     correct = (class_label==predict_label)
-                out_known_train[i]=out
-                Label_known_train[i]=data.y
-                Loss_known_train[i]=loss
-                out_Class_known_train[i]=predict_label
-                Label_Class_known_train[i]=class_label
-                Correct_known_train[i]=correct
+                if regres_or_classif==1:
+                    out_known_train[i]=out
+                    Label_known_train[i]=data.y
+                    Loss_known_train[i]=loss
+                    out_Class_known_train[i]=predict_label
+                    Label_Class_known_train[i]=class_label
+                    Correct_known_train[i]=correct
+                else:
+                    out_Class_known_train[i]=pred
+                    Label_Class_known_train[i]=data.y
+                    Loss_known_train[i]=loss
+                    Correct_known_train[i]=correct
         known_train_matrix=np.zeros((2,2))
-        known_train_matrix[0][0]=len(np.intersect1d(np.where(out_known_train > known_median)[0], np.where(Label_known_train < known_median)[0]))
-        known_train_matrix[0][1]=len(np.intersect1d(np.where(out_known_train >= known_median)[0], np.where(Label_known_train >= known_median)[0]))
-        known_train_matrix[1][0]=len(np.intersect1d(np.where(out_known_train < known_median)[0], np.where(Label_known_train < known_median)[0]))
-        known_train_matrix[1][1]=len(np.intersect1d(np.where(out_known_train <= known_median)[0], np.where(Label_known_train >= known_median)[0]))
+        if regres_or_classif==1:
+            known_train_matrix[0][0]=len(np.intersect1d(np.where(out_known_train > known_median)[0], np.where(Label_known_train < known_median)[0]))
+            known_train_matrix[0][1]=len(np.intersect1d(np.where(out_known_train >= known_median)[0], np.where(Label_known_train >= known_median)[0]))
+            known_train_matrix[1][0]=len(np.intersect1d(np.where(out_known_train < known_median)[0], np.where(Label_known_train < known_median)[0]))
+            known_train_matrix[1][1]=len(np.intersect1d(np.where(out_known_train <= known_median)[0], np.where(Label_known_train >= known_median)[0]))
+        else:
+            known_train_matrix[0, 0] = np.sum((Label_Class_known_train == 0) & (out_Class_known_train == 0))
+            known_train_matrix[0, 1] = np.sum((Label_Class_known_train == 0) & (out_Class_known_train == 1))
+            known_train_matrix[1, 0] = np.sum((Label_Class_known_train == 1) & (out_Class_known_train == 0))
+            known_train_matrix[1, 1] = np.sum((Label_Class_known_train == 1) & (out_Class_known_train == 1))
 
         with torch.no_grad():
             for i in np.arange(len(validation_loader)):
                 data=validation[i]
                 data = data.to(device)
-                out = model(data.x, data.edge_index, data.batch).flatten()
+                if regres_or_classif==1:
+                    out = model(data.x, data.edge_index, data.batch).flatten()
+                else:
+                    out = model(data.x, data.edge_index, data.batch)
                 loss= criterion(out, data.y)  
                 if regres_or_classif==0: #classification
                     pred = out.argmax(dim=1) 
@@ -360,23 +384,38 @@ for run in range(0,n):
                     class_label=data.y>known_median 
                     predict_label=out>known_median
                     correct = (class_label==predict_label)
-                out_known_validation[i]=out
-                Label_known_validation[i]=data.y
-                Loss_known_validation[i]=loss
-                out_Class_known_validation[i]=predict_label
-                Label_Class_known_validation[i]=class_label
-                Correct_known_validation[i]=correct
+                if regres_or_classif==1:
+                    out_known_validation[i]=out
+                    Label_known_validation[i]=data.y
+                    Loss_known_validation[i]=loss
+                    out_Class_known_validation[i]=predict_label
+                    Label_Class_known_validation[i]=class_label
+                    Correct_known_validation[i]=correct
+                else:
+                    out_Class_known_validation[i]=pred
+                    Label_Class_known_validation[i]=data.y
+                    Loss_known_validation[i]=loss
+                    Correct_known_validation[i]=correct
         known_validation_matrix=np.zeros((2,2))
-        known_validation_matrix[0][0]=len(np.intersect1d(np.where(out_known_validation > known_median)[0], np.where(Label_known_validation < known_median)[0]))
-        known_validation_matrix[0][1]=len(np.intersect1d(np.where(out_known_validation >= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
-        known_validation_matrix[1][0]=len(np.intersect1d(np.where(out_known_validation < known_median)[0], np.where(Label_known_validation < known_median)[0]))
-        known_validation_matrix[1][1]=len(np.intersect1d(np.where(out_known_validation <= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
+        if regres_or_classif==1:
+            known_validation_matrix[0][0]=len(np.intersect1d(np.where(out_known_validation > known_median)[0], np.where(Label_known_validation < known_median)[0]))
+            known_validation_matrix[0][1]=len(np.intersect1d(np.where(out_known_validation >= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
+            known_validation_matrix[1][0]=len(np.intersect1d(np.where(out_known_validation < known_median)[0], np.where(Label_known_validation < known_median)[0]))
+            known_validation_matrix[1][1]=len(np.intersect1d(np.where(out_known_validation <= known_median)[0], np.where(Label_known_validation >= known_median)[0]))
+        else:
+            known_validation_matrix[0, 0] = np.sum((Label_Class_known_validation == 0) & (out_Class_known_validation == 0))
+            known_validation_matrix[0, 1] = np.sum((Label_Class_known_validation == 0) & (out_Class_known_validation == 1))
+            known_validation_matrix[1, 0] = np.sum((Label_Class_known_validation == 1) & (out_Class_known_validation == 0))
+            known_validation_matrix[1, 1] = np.sum((Label_Class_known_validation == 1) & (out_Class_known_validation == 1))
 
         with torch.no_grad():
             for i in np.arange(len(unknown_loader)):
                 data=unknown_torch[i]
                 data = data.to(device)
-                out = model(data.x, data.edge_index, data.batch).flatten()
+                if regres_or_classif==1:
+                    out = model(data.x, data.edge_index, data.batch).flatten()
+                else:
+                    out = model(data.x, data.edge_index, data.batch)
                 loss= criterion(out, data.y)  
                 if regres_or_classif==0: #classification
                     pred = out.argmax(dim=1) 
@@ -385,27 +424,41 @@ for run in range(0,n):
                     class_label=data.y>known_median 
                     predict_label=out>known_median
                     correct = (class_label==predict_label)
-                out_unknown[i]=out
-                Label_unknown[i]=data.y
-                Loss_unknown[i]=loss
-                out_Class_unknown[i]=predict_label
-                Label_Class_unknown[i]=class_label
-                Correct_unknown[i]=correct
+                if regres_or_classif==1:
+                    out_unknown[i]=out
+                    Label_unknown[i]=data.y
+                    Loss_unknown[i]=loss
+                    out_Class_unknown[i]=predict_label
+                    Label_Class_unknown[i]=class_label
+                    Correct_unknown[i]=correct
+                else:
+                    out_Class_unknown[i]=pred
+                    Label_Class_unknown[i]=data.y
+                    Loss_unknown[i]=loss
+                    Correct_unknown[i]=correct
         unknown_matrix=np.zeros((2,2))
-        unknown_matrix[0][0]=len(np.intersect1d(np.where(out_unknown> known_median)[0], np.where(Label_unknown < known_median)[0]))
-        unknown_matrix[0][1]=len(np.intersect1d(np.where(out_unknown >= known_median)[0], np.where(Label_unknown >= known_median)[0]))
-        unknown_matrix[1][0]=len(np.intersect1d(np.where(out_unknown < known_median)[0], np.where(Label_unknown < known_median)[0]))
-        unknown_matrix[1][1]=len(np.intersect1d(np.where(out_unknown <= known_median)[0], np.where(Label_unknown>= known_median)[0]))
+        if regres_or_classif==1:
+            unknown_matrix[0][0]=len(np.intersect1d(np.where(out_unknown> known_median)[0], np.where(Label_unknown < known_median)[0]))
+            unknown_matrix[0][1]=len(np.intersect1d(np.where(out_unknown >= known_median)[0], np.where(Label_unknown >= known_median)[0]))
+            unknown_matrix[1][0]=len(np.intersect1d(np.where(out_unknown < known_median)[0], np.where(Label_unknown < known_median)[0]))
+            unknown_matrix[1][1]=len(np.intersect1d(np.where(out_unknown <= known_median)[0], np.where(Label_unknown>= known_median)[0]))
+        else:
+            unknown_matrix[0, 0] = np.sum((Label_Class_unknown == 0) & (out_Class_unknown == 0))
+            unknown_matrix[0, 1] = np.sum((Label_Class_unknown == 0) & (out_Class_unknown == 1))
+            unknown_matrix[1, 0] = np.sum((Label_Class_unknown == 1) & (out_Class_unknown == 0))
+            unknown_matrix[1, 1] = np.sum((Label_Class_unknown == 1) & (out_Class_unknown == 1))
+
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-        ax.plot(Label_known_train,out_known_train, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
-        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
-        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        if regres_or_classif==1:
+            ax.plot(Label_known_train,out_known_train, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+            ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+            ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+            ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
         ax.set_xlabel('$\mathrm{True}$', fontsize=20)
         left_corner_ax = fig.add_axes([0.12, 0.65, 0.2, 0.2])  # Adjust the position and size as needed
         left_corner_ax.imshow(known_train_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(known_train_matrix), vmax=np.max(known_train_matrix))
-        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         for i in range(2):
             for j in range(2):
                 left_corner_ax.text(j, i, f'{known_train_matrix[i, j]:.0f}', ha='center', va='center', color='black')
@@ -419,14 +472,15 @@ for run in range(0,n):
 
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-        ax.plot(Label_known_validation,out_known_validation, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
-        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
-        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        if regres_or_classif==1:
+            ax.plot(Label_known_validation,out_known_validation, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+            ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+            ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+            ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
         ax.set_xlabel('$\mathrm{True}$', fontsize=20)
         left_corner_ax = fig.add_axes([0.12, 0.65, 0.2, 0.2])  # Adjust the position and size as needed
         left_corner_ax.imshow(known_validation_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(known_validation_matrix), vmax=np.max(known_validation_matrix))
-        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         for i in range(2):
             for j in range(2):
                 left_corner_ax.text(j, i, f'{known_validation_matrix[i, j]:.0f}', ha='center', va='center', color='black')
@@ -439,14 +493,15 @@ for run in range(0,n):
         fig.savefig('Known_Valid.pdf',bbox_inches='tight',dpi=300)
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-        ax.plot(Label_unknown,out_unknown, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
-        ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
-        ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+        if regres_or_classif==1:
+            ax.plot(Label_unknown,out_unknown, 'o',linewidth=2, markersize=3, markeredgewidth=2)#,color='r')   
+            ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
+            ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
+            ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         ax.set_ylabel('$\mathrm{Predict}$', fontsize=20)
         ax.set_xlabel('$\mathrm{True}$', fontsize=20)
         left_corner_ax = fig.add_axes([0.12, 0.67, 0.2, 0.2])  # Adjust the position and size as needed
         left_corner_ax.imshow(unknown_matrix, interpolation='nearest', cmap='gray', vmin=-np.max(unknown_matrix), vmax=np.max(unknown_matrix))
-        ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
         for i in range(2):
             for j in range(2):
                 left_corner_ax.text(j, i, f'{unknown_matrix[i, j]:.0f}', ha='center', va='center', color='black')
@@ -457,14 +512,6 @@ for run in range(0,n):
         ax.set_title(f'$ \mathrm{{Unknown}}  \, \, , \, \, \mathrm{{Loss}} \, \, : \, \, {np.round(Loss_unknown.mean(),2)} \, \, , \,\, \mathrm{{Acc}} \, \, : \, \, {np.round(len(np.where(Correct_unknown==1)[0])/len(unknown_loader),2)}$')
         fig.savefig('Unknown.png',bbox_inches='tight',dpi=300)
         fig.savefig('Unknown.pdf',bbox_inches='tight',dpi=300)
-
-
-
-        k=1
-
-
-
-        
 
         """predictions = []
         unknown_index = []

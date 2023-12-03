@@ -35,6 +35,7 @@ class GCN_Model(torch.nn.Module):
                             gap(hidden, batch),
                             gadd(hidden, batch)], dim=1)
 
+        hidden = F.dropout(hidden, p=0.5, training=self.training)
         #hidden = F.dropout(hidden, p=0.5, training=self.training)
         out = self.out(hidden)  # For regression
         #out=torch.exp(-out)
