@@ -304,6 +304,8 @@ for run in range(0,n):
                 torch.save(model.state_dict(), model_path)
                 #mlflow.pytorch.log_model(model, "models")
                 mlflow.pytorch.autolog()
+
+        model.load_state_dict(torch.load(f'{File_Name}_best.pth'))
         
         model.eval()
 
