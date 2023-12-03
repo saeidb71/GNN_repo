@@ -26,9 +26,23 @@ logger = getLogger(__name__)
 logger.addHandler(StreamHandler())
 logger.setLevel(INFO)
 pytorch_version = f"torch-{torch.__version__}.html"
+import torch.nn as nn
+
+def custom_loss(outputs, targets, p):
+    # Calculate mean squared error
+    c=torch.nn.L1Loss()
+    L1_loss=c(outputs, targets)
+
+    penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
+                                    torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
+
+
+    # Combine the MSE loss and the penalty term
+    total_loss = L1_loss + 2*penalty.mean()
+
+    return total_loss
 
 plot_i=0
-
 def train():
     global plot_i 
     model.train()
@@ -114,7 +128,7 @@ except:
 
 File_Name=f"Mdltype_{Model_type}_reg/class_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
 #python run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 1 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 60000 --n 1
-Train_or_Check=0; #Train: 1 , Test : 0
+Train_or_Check=1; #Train: 1 , Test : 0
 
 print('-----------------------------------Config Start-------------------------------------------')
 print(f"Model_type: {Model_type}")
@@ -132,13 +146,11 @@ print('-----------------------------------Config End----------------------------
 
 # Define Intermediate variables
 num_features= 8#3 # number of node features
+
 if regres_or_classif==0:
     num_output=2 #classification
-    criterion = torch.nn.CrossEntropyLoss()
 elif regres_or_classif==1:
     num_output=1 #regression
-    #criterion = torch.nn.MSELoss() 
-    criterion=torch.nn.L1Loss()
 
 
 raw_data = loadmat('data/analog_circuits/circuit_data.mat', squeeze_me=True) #raw_data['Graphs'][0]['A'] #raw_data['Graphs'][0]['Labels']
@@ -207,6 +219,15 @@ for run in range(0,n):
         known_performance = torch.exp(-known_performance_tensor)
 
         known_median = np.median(known_performance)
+
+        if regres_or_classif==0:
+            num_output=2 #classification
+            criterion = torch.nn.CrossEntropyLoss()
+        elif regres_or_classif==1:
+            num_output=1 #regression
+            #criterion = torch.nn.MSELoss() 
+            #criterion=torch.nn.L1Loss()
+            criterion = lambda outputs,targets: custom_loss(outputs, targets, known_median)
 
         try:
             os.remove(f'{data_save_path}/known_data/processed/data.pt')
