@@ -5,6 +5,7 @@ import torch
 from torch_geometric.loader import DataLoader
 import torch
 import time
+import math
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
@@ -30,8 +31,29 @@ import torch.nn as nn
 
 def custom_loss(outputs, targets, p):
     # Calculate mean squared error
+    """above_p_indices = targets >= p
+    below_p_indices = targets < p
+    c=torch.nn.L1Loss()
+    L1_Loss_above_p=0.0
+    L1_Loss_below_p=0.0
+
+    if any(above_p_indices):
+        L1_Loss_above_p=c(outputs[above_p_indices],targets[above_p_indices])
+    #if any(below_p_indices):
+    #    L1_Loss_below_p=c(outputs[below_p_indices],targets[below_p_indices])
+
+    penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
+                                    torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
+
+    weighted_penalty =  torch.where(targets >= p, 0.0*penalty, 0.3*penalty)
+    total_loss=5.0*L1_Loss_above_p+L1_Loss_below_p+weighted_penalty.mean()
+
+    if math.isnan(total_loss):
+        kk=1"""
+
     c=torch.nn.L1Loss()
     L1_loss=c(outputs, targets)
+    
     penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
                                     torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
     # Combine the MSE loss and the penalty term
@@ -111,15 +133,15 @@ except:
     numHeads=4#4
     num_layers=3
     NUM_GRAPHS_PER_BATCH=4 #4
-    p_known=0.2
+    p_known=0.05
     training_split=0.8 
-    epochs=1000#600 
+    epochs=700#600 
     n=1
 
 File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
 #python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
 
-Train_or_Check=0; #Train: 1 , Test : 0
+Train_or_Check=1; #Train: 1 , Test : 0
 # Set up early stopping parameters
 early_stopping_counter = 0
 best_val_accuracy = 0.0
@@ -269,20 +291,20 @@ for run in range(0,n):
                     if (epoch-1) % 10 == 0:  
                         train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
                         val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
-                        test_loss,test_acc = test(unknown_loader2,regres_or_classif,known_median)    
+                        #test_loss,test_acc = test(unknown_loader2,regres_or_classif,known_median)    
 
                         print('-----------------------------------Training Start-------------------------------------------')
                         print(f"train_loss : {train_loss_noDropOut} , train_acc : {train_acc}")
                         print(f"val_loss : {val_loss} , val_acc : {val_acc}")
-                        print(f"test_loss : {test_loss} , test_acc : {test_acc}")
+                        #print(f"test_loss : {test_loss} , test_acc : {test_acc}")
                         print('-----------------------------------Training End-------------------------------------------')
 
                         mlflow.log_metric("train_loss", train_loss_noDropOut)
                         mlflow.log_metric("train_acc", train_acc)
                         mlflow.log_metric("val_loss", val_loss)
                         mlflow.log_metric("val_acc", val_acc)
-                        mlflow.log_metric("test_loss", test_loss)
-                        mlflow.log_metric("test_acc", test_acc)
+                       # mlflow.log_metric("test_loss", test_loss)
+                       # mlflow.log_metric("test_acc", test_acc)
                         #print(f"train_loss : {train_loss}")
                         #mlflow.log_metric("train_loss", train_loss)
 
