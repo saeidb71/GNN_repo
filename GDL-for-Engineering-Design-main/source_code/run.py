@@ -117,13 +117,13 @@ except:
     n=1
 
 File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
-#python run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
+#python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
 
 Train_or_Check=1; #Train: 1 , Test : 0
 # Set up early stopping parameters
 early_stopping_counter = 0
 best_val_accuracy = 0.0
-patience = 7  # Number of consecutive iterations without improvement to tolerate
+patience = 12#7  # Number of consecutive iterations without improvement to tolerate
 break_outer = False
 # Define Intermediate variables
 num_features= 3#8 # number of node features
@@ -247,6 +247,7 @@ for run in range(0,n):
         training_loader = DataLoader(training, batch_size=NUM_GRAPHS_PER_BATCH, shuffle=False)
         validation_loader = DataLoader(validation, batch_size=NUM_GRAPHS_PER_BATCH, shuffle=False)
         unknown_loader = DataLoader(unknown_torch, batch_size=1, shuffle=False)
+        unknown_loader2 = DataLoader(unknown_torch, batch_size=100000, shuffle=False)
 
 
         #mlflow.create_experiment(File_Name)
@@ -268,7 +269,7 @@ for run in range(0,n):
                     if (epoch-1) % 10 == 0:  
                         train_loss_noDropOut,train_acc = test(training_loader,regres_or_classif,known_median)       
                         val_loss,val_acc = test(validation_loader,regres_or_classif,known_median) 
-                        test_loss,test_acc = test(unknown_loader,regres_or_classif,known_median)    
+                        test_loss,test_acc = test(unknown_loader2,regres_or_classif,known_median)    
 
                         print('-----------------------------------Training Start-------------------------------------------')
                         print(f"train_loss : {train_loss_noDropOut} , train_acc : {train_acc}")
@@ -285,7 +286,9 @@ for run in range(0,n):
                         #print(f"train_loss : {train_loss}")
                         #mlflow.log_metric("train_loss", train_loss)
 
-                        if val_acc > best_val_accuracy:
+                        if epoch<90:
+                            early_stopping_counter=0
+                        elif val_acc > best_val_accuracy:
                             best_val_accuracy = val_acc
                             early_stopping_counter = 0
                             # Save your model if needed
