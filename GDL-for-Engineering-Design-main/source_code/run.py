@@ -157,6 +157,9 @@ data_all = pd.DataFrame(raw_data['Graphs'])
 #column_names = data.columns   #data['A'][0]   #data['Labels'][0]     #data.loc[5]  
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+sortel_all_index=data_all['Labels'].argsort()
+sorted_all_labels=data_all['Labels'][sortel_all_index]
+
 median_performance = []
 csv_save_path = 'csv_save_path' #Enter your desired save path for the csv results
 data_save_path = 'data_save_path' #Enter the desired save path to store the data
@@ -195,8 +198,11 @@ for run in range(0,n):
             all_perm = np.random.permutation(len(data_all))
             All_index_split = int(len(data_all)*p_known)
 
-            known_indices = all_perm[:All_index_split]
-            unknown_indices = all_perm[All_index_split+1:]
+            """known_indices = all_perm[:All_index_split]
+            unknown_indices = all_perm[All_index_split+1:]"""
+
+            known_indices = sortel_all_index[:int(len(data_all)*p_known)]
+            unknown_indices = sortel_all_index[int(len(data_all)*p_known):]
         else:
             n_known_min =  100#2500
             n_known_ones = len(known_ones_index)
