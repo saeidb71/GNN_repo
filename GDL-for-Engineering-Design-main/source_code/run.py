@@ -33,33 +33,15 @@ import torch.nn as nn
 
 def custom_loss(outputs, targets, p):
     # Calculate mean squared error
-    """above_p_indices = targets >= p
-    below_p_indices = targets < p
-    c=torch.nn.L1Loss()
-    L1_Loss_above_p=0.0
-    L1_Loss_below_p=0.0
-
-    if any(above_p_indices):
-        L1_Loss_above_p=c(outputs[above_p_indices],targets[above_p_indices])
-    #if any(below_p_indices):
-    #    L1_Loss_below_p=c(outputs[below_p_indices],targets[below_p_indices])
-
-    penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
-                                    torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
-
-    weighted_penalty =  torch.where(targets >= p, 0.0*penalty, 0.3*penalty)
-    total_loss=5.0*L1_Loss_above_p+L1_Loss_below_p+weighted_penalty.mean()
-
-    if math.isnan(total_loss):
-        kk=1"""
 
     c=torch.nn.L1Loss()
     L1_loss=c(outputs, targets)
     
-    penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
-                                    torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
+    #penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
+                                    #torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
     # Combine the MSE loss and the penalty term
-    total_loss = L1_loss + 2*penalty.mean()
+    total_loss = L1_loss #+ 2*penalty.mean()
+
     return total_loss
 
 def train(regres_or_classif):
@@ -131,14 +113,14 @@ try:
 except:
     Model_type=0
     regres_or_classif=1
-    embedding_size=8#64#64
-    numHeads=1#4
+    embedding_size=64#64#64
+    numHeads=4#4
     num_layers=3
     NUM_GRAPHS_PER_BATCH=4 #4
-    p_known=0.2
+    p_known=0.003
     training_split=0.8
     epochs=1000#600 
-    n=5
+    n=15#5
 
 File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
 #python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
@@ -179,7 +161,7 @@ median_performance = []
 csv_save_path = 'csv_save_path' #Enter your desired save path for the csv results
 data_save_path = 'data_save_path' #Enter the desired save path to store the data
 
-text_file_path = 'output.txt'
+text_file_path = f'{File_Name}.txt'
 
 for run in range(0,n):
     seed = 42 #random.randint(10000,99999)
@@ -187,7 +169,7 @@ for run in range(0,n):
     torch.manual_seed(seed)
 
     start_time = time.time()
-    for iteration in range(0,n):
+    for iteration in range(0,n): #
         early_stopping_counter = 0
         best_val_accuracy = 0.0
         break_outer=False
@@ -197,6 +179,9 @@ for run in range(0,n):
             model=GAT_Model(num_layers, num_features, embedding_size, num_output,numHeads).to(device)
         if Train_or_Check==0:
             model_path = f'{File_Name}.pth' 
+            model.load_state_dict(torch.load(model_path))
+        if iteration>=1:
+            model_path = f'{File_Name}_best_iter{iteration-1}.pth' 
             model.load_state_dict(torch.load(model_path))
         print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) #0.001
@@ -213,7 +198,7 @@ for run in range(0,n):
             known_indices = all_perm[:All_index_split]
             unknown_indices = all_perm[All_index_split+1:]
         else:
-            n_known_min = 2000
+            n_known_min =  100#2500
             n_known_ones = len(known_ones_index)
             known_set_sizes = []
             if n_known_ones < n_known_min :
