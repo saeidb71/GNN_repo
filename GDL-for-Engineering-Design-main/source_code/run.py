@@ -34,13 +34,14 @@ import torch.nn as nn
 def custom_loss(outputs, targets, p):
     # Calculate mean squared error
 
-    c=torch.nn.L1Loss()
+    #c=torch.nn.L1Loss()
+    c=torch.nn.MSELoss()
     L1_loss=c(outputs, targets)
     
     #penalty = torch.where(targets >= p, torch.abs(torch.minimum(outputs - p, torch.zeros_like(outputs))), 
                                     #torch.abs(torch.maximum(outputs - p, torch.zeros_like(outputs))))
     # Combine the MSE loss and the penalty term
-    total_loss = L1_loss #+ 2*penalty.mean()
+    total_loss =L1_loss #+ 2*penalty.mean()
 
     return total_loss
 
@@ -117,10 +118,10 @@ except:
     numHeads=4#4
     num_layers=3
     NUM_GRAPHS_PER_BATCH=4 #4
-    p_known=0.003
+    p_known=0.2
     training_split=0.8
     epochs=1000#600 
-    n=15#5
+    n=1#5
 
 File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
 #python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
@@ -132,7 +133,7 @@ best_val_accuracy = 0.0
 patience = 12#12#7  # Number of consecutive iterations without improvement to tolerate
 break_outer = False
 # Define Intermediate variables
-num_features= 3#8 # number of node features
+num_features= 5#3#8 # number of node features
 if regres_or_classif==0:
     num_output=2 #classification
 elif regres_or_classif==1:
@@ -159,6 +160,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 sortel_all_index=data_all['Labels'].argsort()
 sorted_all_labels=data_all['Labels'][sortel_all_index]
+complexity=data_all['nz']+data_all['np']
+complexity_sorted=complexity[sortel_all_index]
 
 median_performance = []
 csv_save_path = 'csv_save_path' #Enter your desired save path for the csv results
@@ -167,7 +170,7 @@ data_save_path = 'data_save_path' #Enter the desired save path to store the data
 text_file_path = f'{File_Name}.txt'
 
 for run in range(0,n):
-    seed = 42 #random.randint(10000,99999)
+    seed = 12000#42 #random.randint(10000,99999)
     np.random.seed(seed)
     torch.manual_seed(seed)
 
@@ -181,7 +184,7 @@ for run in range(0,n):
         elif Model_type==0:
             model=GAT_Model(num_layers, num_features, embedding_size, num_output,numHeads).to(device)
         if Train_or_Check==0:
-            model_path = f'{File_Name}.pth' 
+            model_path = f'{File_Name}_best_iter{iteration}.pth' 
             model.load_state_dict(torch.load(model_path))
         if iteration>=1:
             model_path = f'{File_Name}_best_iter{iteration-1}.pth' 
@@ -198,11 +201,11 @@ for run in range(0,n):
             all_perm = np.random.permutation(len(data_all))
             All_index_split = int(len(data_all)*p_known)
 
-            """known_indices = all_perm[:All_index_split]
-            unknown_indices = all_perm[All_index_split+1:]"""
+            known_indices = all_perm[:All_index_split]
+            unknown_indices = all_perm[All_index_split+1:]
 
-            known_indices = sortel_all_index[:int(len(data_all)*p_known)]
-            unknown_indices = sortel_all_index[int(len(data_all)*p_known):]
+            """known_indices = sortel_all_index[:int(len(data_all)*p_known)]
+            unknown_indices = sortel_all_index[int(len(data_all)*p_known):]"""
         else:
             n_known_min =  100#2500
             n_known_ones = len(known_ones_index)
@@ -642,7 +645,7 @@ for run in range(0,n):
         known_performance_tensor_all_data = torch.tensor(known_performance_all_data.astype(float).values, dtype=torch.float32)
         known_performance_all_data = torch.exp(-known_performance_tensor_all_data)
         known_median_all_data = np.median(known_performance_all_data)
-        All_data_torch = IterationDataset(root='All_Data', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
+        All_data_torch = IterationDataset(root='All_Data_new', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
         
         out_all=np.zeros(len(All_data_torch))
         Label_all=np.zeros(len(All_data_torch))

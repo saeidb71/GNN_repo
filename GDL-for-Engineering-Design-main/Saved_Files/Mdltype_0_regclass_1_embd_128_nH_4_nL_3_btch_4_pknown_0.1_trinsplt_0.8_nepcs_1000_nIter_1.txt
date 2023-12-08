@@ -1,0 +1,13 @@
+iter 0 - END
+known_ones_index: 2162
+predicted_ones_index: 17011
+count_existing_elements_10: 7
+count_existing_elements_100: 57
+count_existing_elements_1000: 451
+Accuracy: 0.8492446819443017
+Precision: 0.8983010992886955
+Recall: 0.7869097275863844
+F1: 0.8389239637661268
+MCC: 0.7038164989795597
+------------------
+------------------

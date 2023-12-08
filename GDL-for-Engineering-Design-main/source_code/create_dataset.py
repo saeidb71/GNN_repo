@@ -45,7 +45,7 @@ class IterationDataset(InMemoryDataset):
         data_list = []
         for index, cir in tqdm(self.data.iterrows(), total=len(self.data)):
             nxg = nx.Graph(self.data['A'][index])
-            nxg = self._get_node_features(nxg, self.data['Ln'][index])
+            nxg = self._get_node_features(nxg, self.data['Ln'][index],self.data['np'][index],self.data['nz'][index]) #
             pt_graph = self._get_graph_object(nxg)
             pt_graph.y = self._get_known_graph_label(self.data['Labels'][index], self.performance_threshold)
             pt_graph.performance = torch.tensor(self.data['Labels'][index], dtype=torch.float)
@@ -72,21 +72,25 @@ class IterationDataset(InMemoryDataset):
         comp = len(types)
         return torch.tensor(comp, dtype=torch.float)
 
-    def _get_node_features(self, nx_graph, node_labels):
+    def _get_node_features(self, nx_graph, node_labels,np,nz):
         betweenness = list(nx.betweenness_centrality(nx_graph).values())
         eigenvector = list(nx.eigenvector_centrality(nx_graph, max_iter=600).values())
         node_label_dict = dict(enumerate(node_labels))
 
         mapping_dict = {'C': 0, 'G': 1, 'I': 2, 'O': 3, 'P': 4, 'R': 5}
         component_labels = []
+        np_list=[]
+        nz_list=[]
 
         for value in node_label_dict.values():
             if value in mapping_dict:
                 component_labels.append(mapping_dict[value])
+            np_list.append(np)
+            nz_list.append(nz)
 
         """new_node_feature_hot_key = [[1 if i == label else 0 for i in range(6)] for label in component_labels]"""
 
-        all_features = zip(betweenness, eigenvector, component_labels)
+        all_features = zip(betweenness, eigenvector, component_labels,np_list,nz_list)
         """all_features = zip(betweenness, eigenvector, 
                            list(np.array(new_node_feature_hot_key)[:,0]),
                            list(np.array(new_node_feature_hot_key)[:,1]),
@@ -117,7 +121,7 @@ class IterationDataset(InMemoryDataset):
     
     @property
     def num_node_features(self) -> int:
-        return 3#8
+        return 5#8
 
     @property
     def num_classes(self) -> int:
