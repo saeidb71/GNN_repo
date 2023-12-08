@@ -75,6 +75,17 @@ class IterationDataset(InMemoryDataset):
     def _get_node_features(self, nx_graph, node_labels,np,nz):
         betweenness = list(nx.betweenness_centrality(nx_graph).values())
         eigenvector = list(nx.eigenvector_centrality(nx_graph, max_iter=600).values())
+
+
+        degree_centrality = list(nx.degree_centrality(nx_graph).values())
+        closeness_centrality = list(nx.closeness_centrality(nx_graph).values())
+        pagerank = list(nx.pagerank(nx_graph).values())
+        eccentricity = list(nx.eccentricity(nx_graph).values())
+        katz_centrality = list(nx.katz_centrality(nx_graph).values())
+        harmonic_centrality = list(nx.harmonic_centrality(nx_graph).values())
+        average_neighbor_degree = list(nx.average_neighbor_degree(nx_graph).values())
+        local_clustering_coefficient = list(nx.square_clustering(nx_graph).values())
+
         node_label_dict = dict(enumerate(node_labels))
 
         mapping_dict = {'C': 0, 'G': 1, 'I': 2, 'O': 3, 'P': 4, 'R': 5}
@@ -90,7 +101,19 @@ class IterationDataset(InMemoryDataset):
 
         """new_node_feature_hot_key = [[1 if i == label else 0 for i in range(6)] for label in component_labels]"""
 
-        all_features = zip(betweenness, eigenvector, component_labels,np_list,nz_list)
+        all_features = zip(betweenness, 
+                           eigenvector, 
+                           degree_centrality, 
+                           closeness_centrality ,
+                           pagerank,
+                           eccentricity,
+                           katz_centrality,
+                           harmonic_centrality,
+                           average_neighbor_degree,
+                           local_clustering_coefficient,
+                           component_labels,
+                           np_list,
+                           nz_list)
         """all_features = zip(betweenness, eigenvector, 
                            list(np.array(new_node_feature_hot_key)[:,0]),
                            list(np.array(new_node_feature_hot_key)[:,1]),
@@ -121,7 +144,7 @@ class IterationDataset(InMemoryDataset):
     
     @property
     def num_node_features(self) -> int:
-        return 5#8
+        return 13#5#8
 
     @property
     def num_classes(self) -> int:

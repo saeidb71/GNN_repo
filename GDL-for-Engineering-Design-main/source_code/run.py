@@ -133,7 +133,7 @@ best_val_accuracy = 0.0
 patience = 12#12#7  # Number of consecutive iterations without improvement to tolerate
 break_outer = False
 # Define Intermediate variables
-num_features= 5#3#8 # number of node features
+num_features= 13#5#3#8 # number of node features
 if regres_or_classif==0:
     num_output=2 #classification
 elif regres_or_classif==1:
@@ -307,7 +307,7 @@ for run in range(0,n):
                         #print(f"train_loss : {train_loss}")
                         #mlflow.log_metric("train_loss", train_loss)
 
-                        if epoch<90: #90
+                        if epoch<400: #90
                             early_stopping_counter=0
                         elif val_acc > best_val_accuracy:
                             best_val_accuracy = val_acc
@@ -645,7 +645,7 @@ for run in range(0,n):
         known_performance_tensor_all_data = torch.tensor(known_performance_all_data.astype(float).values, dtype=torch.float32)
         known_performance_all_data = torch.exp(-known_performance_tensor_all_data)
         known_median_all_data = np.median(known_performance_all_data)
-        All_data_torch = IterationDataset(root='All_Data_new', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
+        All_data_torch = IterationDataset(root='All_Data_new2', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
         
         out_all=np.zeros(len(All_data_torch))
         Label_all=np.zeros(len(All_data_torch))
