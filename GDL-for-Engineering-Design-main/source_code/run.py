@@ -97,6 +97,7 @@ parser.add_argument('--p_known', type=float, required=True, help='Value of p_kno
 parser.add_argument('--training_split', type=float, required=True, help='Value of training_split')
 parser.add_argument('--epochs', type=int, required=True, help='epochs')
 parser.add_argument('--n', type=int, required=True, help='number of iterations')
+parser.add_argument('--subd', type=float, required=True, help='subdivision')
 
 # Parse the command-line arguments
 try:
@@ -111,6 +112,8 @@ try:
     training_split=args.training_split #0.8
     epochs=args.epochs #600
     n=args.n # 5
+    subd=args.subd
+
 except:
     Model_type=0
     regres_or_classif=1
@@ -118,12 +121,13 @@ except:
     numHeads=4#4
     num_layers=3
     NUM_GRAPHS_PER_BATCH=4 #4
-    p_known=0.2
+    p_known=0.1
     training_split=0.8
     epochs=1000#600 
-    n=1#5
+    n=3#5
+    subd=0.5
 
-File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}"
+File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}_subd{subd}"
 #python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
 
 Train_or_Check=1; #Train: 1 , Test : 0
@@ -133,7 +137,7 @@ best_val_accuracy = 0.0
 patience = 12#12#7  # Number of consecutive iterations without improvement to tolerate
 break_outer = False
 # Define Intermediate variables
-num_features= 13#5#3#8 # number of node features
+num_features= 13#13#5#3#8 # number of node features
 if regres_or_classif==0:
     num_output=2 #classification
 elif regres_or_classif==1:
@@ -169,8 +173,8 @@ data_save_path = 'data_save_path' #Enter the desired save path to store the data
 
 text_file_path = f'{File_Name}.txt'
 
-for run in range(0,n):
-    seed = 12000#42 #random.randint(10000,99999)
+for run in range(0,1):
+    seed =  58#random.randint(10000,99999) #58
     np.random.seed(seed)
     torch.manual_seed(seed)
 
@@ -184,10 +188,10 @@ for run in range(0,n):
         elif Model_type==0:
             model=GAT_Model(num_layers, num_features, embedding_size, num_output,numHeads).to(device)
         if Train_or_Check==0:
-            model_path = f'{File_Name}_best_iter{iteration}.pth' 
+            model_path = f'{File_Name}_best_iter{iteration}_subd{subd}.pth' 
             model.load_state_dict(torch.load(model_path))
         if iteration>=1:
-            model_path = f'{File_Name}_best_iter{iteration-1}.pth' 
+            model_path = f'{File_Name}_best_iter{iteration-1}_subd{subd}.pth' 
             model.load_state_dict(torch.load(model_path))
         print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001) #0.001
@@ -244,23 +248,23 @@ for run in range(0,n):
             criterion = lambda outputs,targets: custom_loss(outputs, targets, known_median)
 
         try:
-            os.remove(f'known_data_reg_p{p_known}/processed/data.pt')
+            os.remove(f'known_data_reg_p{p_known}_subd{subd}/processed/data.pt')
         except OSError as e:
 
             print('Error')
         
         
         try:
-            os.remove(f'unknown_data_reg_p{p_known}/processed/data.pt')
+            os.remove(f'unknown_data_reg_p{p_known}_subd{subd}/processed/data.pt')
         except OSError as e:
             print('Error')
         
         if regres_or_classif==0: #classification
-            known_torch = IterationDataset(root=f'known_data_classif_p{p_known}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
-            unknown_torch = IterationDataset(root=f'unknown_data_classif_p{p_known}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None)  #unknown_torch[0]
+            known_torch = IterationDataset(root=f'known_data_classif_p{p_known}_subd{subd}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
+            unknown_torch = IterationDataset(root=f'unknown_data_classif_p{p_known}_subd{subd}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None)  #unknown_torch[0]
         elif regres_or_classif==1: #refression
-            known_torch = IterationDataset(root=f'known_data_reg_p{p_known}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
-            unknown_torch = IterationDataset(root=f'unknown_data_reg_p{p_known}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
+            known_torch = IterationDataset(root=f'known_data_reg_p{p_known}_subd{subd}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
+            unknown_torch = IterationDataset(root=f'unknown_data_reg_p{p_known}_subd{subd}', data=unknown_graphs, performance_threshold=known_median,  regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
 
         training = known_torch[:int(len(known_torch)*training_split)]
         validation = known_torch[int(len(known_torch)*training_split)+1:]
@@ -284,6 +288,7 @@ for run in range(0,n):
                 mlflow.log_param("training_split", training_split)
                 mlflow.log_param("epochs", epochs)
                 mlflow.log_param("n", n)
+                mlflow.log_param("subd",subd)
 
                 for epoch in tqdm(range(1, epochs + 1), total=epochs):
                     train_loss=train(regres_or_classif)
@@ -313,7 +318,7 @@ for run in range(0,n):
                             best_val_accuracy = val_acc
                             early_stopping_counter = 0
                             # Save your model if needed
-                            torch.save(model.state_dict(),  f'{File_Name}_best_iter{iteration}.pth' )
+                            torch.save(model.state_dict(),  f'{File_Name}_best_iter{iteration}_subd{subd}.pth' )
                         else:
                             early_stopping_counter += 1
 
@@ -324,12 +329,12 @@ for run in range(0,n):
                         break
 
                 
-                model_path = f'{File_Name}_iter{iteration}.pth' #'trained_model_1.pth'
+                model_path = f'{File_Name}_iter{iteration}_subd{subd}.pth' #'trained_model_1.pth'
                 torch.save(model.state_dict(), model_path)
                 #mlflow.pytorch.log_model(model, "models")
                 mlflow.pytorch.autolog()
 
-        model.load_state_dict(torch.load(f'{File_Name}_best_iter{iteration}.pth'))
+        model.load_state_dict(torch.load(f'{File_Name}_best_iter{iteration}_subd{subd}.pth'))
         
         model.eval()
 
@@ -645,7 +650,7 @@ for run in range(0,n):
         known_performance_tensor_all_data = torch.tensor(known_performance_all_data.astype(float).values, dtype=torch.float32)
         known_performance_all_data = torch.exp(-known_performance_tensor_all_data)
         known_median_all_data = np.median(known_performance_all_data)
-        All_data_torch = IterationDataset(root='All_Data_new2', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
+        All_data_torch = IterationDataset(root='All_Data_new5', data=All_data, performance_threshold=known_median_all_data, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) 
         
         out_all=np.zeros(len(All_data_torch))
         Label_all=np.zeros(len(All_data_torch))
@@ -705,18 +710,30 @@ for run in range(0,n):
 
         #-------------------prepare for next iteraiton--------<this pat shoudl be modified for clasification (not regression0) task>
         known_classifications = []
+        known_y=[]
         for i in range(len(known_torch)):
             if known_torch[i].y.item()>known_median:
                 known_classifications.append(1)
             else:
                 known_classifications.append(0)
+            known_y.append(known_torch[i].y.item())
+        known_y=np.array(known_y)
+        known_y_arg_sort=known_y.argsort()[::-1]
+
         known_classifications = np.array(known_classifications)
         known_ones_index = known_indices[np.where(known_classifications == 1)[0]]
         known_zero_index = known_indices[np.where(known_classifications == 0)[0]]
 
+        """known_ones_index=np.random.permutation(known_indices[known_y_arg_sort[0:int(len(known_torch)*subd)]])
+        known_zero_index=np.random.permutation(known_indices[known_y_arg_sort[int(len(known_torch)*subd):]])"""
+
+        unknown_y_arg_sort=out_unknown.argsort()[::-1]
 
         predicted_ones_index = unknown_indices[np.where(out_Class_unknown == 1)[0]]
         predicted_zero_index = unknown_indices[np.where(out_Class_unknown == 0)[0]]
+
+        """predicted_ones_index = np.random.permutation(unknown_indices[unknown_y_arg_sort[0:int(len(unknown_torch)*subd)]])
+        predicted_zero_index = np.random.permutation(unknown_indices[unknown_y_arg_sort[int(len(unknown_torch)*subd):]])"""
 
         plt.close('all')
 
@@ -735,7 +752,8 @@ for run in range(0,n):
             text_file.write(f"Recall: {Recall}\n")
             text_file.write(f"F1: {F1}\n")
             text_file.write(f"MCC: {MCC}\n")
-            
+
+            text_file.write(f"seed: {seed}\n")
             text_file.write(f"------------------\n")
             text_file.write(f"------------------\n")
             

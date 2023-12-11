@@ -41,7 +41,7 @@ class GAT_Model(torch.nn.Module):
                             gadd(hidden, batch)], dim=1)
     
 
-        hidden = F.dropout(hidden, p=0.005, training=self.training)
+        hidden = F.dropout(hidden, p=0.6, training=self.training)
         out = self.out(hidden)  # For regression
         #out=torch.exp(-out)
 

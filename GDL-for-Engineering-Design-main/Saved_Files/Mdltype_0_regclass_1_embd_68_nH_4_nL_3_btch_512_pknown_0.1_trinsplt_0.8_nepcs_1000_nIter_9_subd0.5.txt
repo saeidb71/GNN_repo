@@ -1,0 +1,78 @@
+iter 0 - END
+known_ones_index: 2162
+predicted_ones_index: 17348
+count_existing_elements_10: 1
+count_existing_elements_100: 27
+count_existing_elements_1000: 300
+Accuracy: 0.8501438701058472
+Precision: 0.8901314272538621
+Recall: 0.7972533429707264
+F1: 0.8411362584089114
+MCC: 0.703941804903146
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1077
+predicted_ones_index: 6775
+count_existing_elements_10: 7
+count_existing_elements_100: 55
+count_existing_elements_1000: 487
+Accuracy: 0.7654484666820383
+Precision: 0.8277490774907749
+Recall: 0.6589894242068155
+F1: 0.7337912986588156
+MCC: 0.5399506952633797
+------------------
+------------------
+iter 2 - END
+known_ones_index: 488
+predicted_ones_index: 3308
+count_existing_elements_10: 7
+count_existing_elements_100: 60
+count_existing_elements_1000: 529
+Accuracy: 0.6544649446494465
+Precision: 0.7400241837968561
+Recall: 0.6230593026215322
+F1: 0.6765234213071715
+MCC: 0.31684184351079714
+------------------
+------------------
+iter 3 - END
+known_ones_index: 243
+predicted_ones_index: 1813
+count_existing_elements_10: 0
+count_existing_elements_100: 25
+count_existing_elements_1000: 229
+Accuracy: 0.5402055622732769
+Precision: 0.4875896304467733
+Recall: 0.5989159891598916
+F1: 0.5375494071146245
+MCC: 0.09171139970379913
+------------------
+------------------
+iter 4 - END
+known_ones_index: 54
+predicted_ones_index: 1011
+count_existing_elements_10: 0
+count_existing_elements_100: 0
+count_existing_elements_1000: 3
+Accuracy: 0.4247104247104247
+Precision: 0.3570722057368942
+Recall: 0.47877984084880637
+F1: 0.40906515580736547
+MCC: -0.13397580481769447
+------------------
+------------------
+iter 5 - END
+known_ones_index: 7
+predicted_ones_index: 88
+count_existing_elements_10: 4
+count_existing_elements_100: 35
+count_existing_elements_1000: 233
+Accuracy: 0.8373056994818653
+Precision: 0.17045454545454544
+Recall: 0.15151515151515152
+F1: 0.160427807486631
+MCC: 0.07084854627978474
+------------------
+------------------

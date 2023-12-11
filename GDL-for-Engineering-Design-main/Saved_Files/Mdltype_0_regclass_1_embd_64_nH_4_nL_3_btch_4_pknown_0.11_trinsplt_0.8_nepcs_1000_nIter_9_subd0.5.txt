@@ -1,0 +1,52 @@
+iter 0 - END
+known_ones_index: 2378
+predicted_ones_index: 19245
+count_existing_elements_10: 3
+count_existing_elements_100: 27
+count_existing_elements_1000: 331
+Accuracy: 0.8536021407601777
+Precision: 0.8992809995285242
+Recall: 0.7953609590826166
+F1: 0.8441346499598926
+MCC: 0.7118376967236708
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1189
+predicted_ones_index: 9622
+count_existing_elements_10: 6
+count_existing_elements_100: 52
+count_existing_elements_1000: 514
+Accuracy: 0.8063393089114056
+Precision: 0.7964569775849603
+Recall: 0.7643113218457268
+F1: 0.7800531130126881
+MCC: 0.6076085613972004
+------------------
+------------------
+iter 2 - END
+known_ones_index: 594
+predicted_ones_index: 4811
+count_existing_elements_10: 7
+count_existing_elements_100: 62
+count_existing_elements_1000: 513
+Accuracy: 0.6977759301600499
+Precision: 0.6651242502142245
+Recall: 0.802688728024819
+F1: 0.7274601686972821
+MCC: 0.40374648016329157
+------------------
+------------------
+iter 3 - END
+known_ones_index: 297
+predicted_ones_index: 2405
+count_existing_elements_10: 3
+count_existing_elements_100: 16
+count_existing_elements_1000: 172
+Accuracy: 0.5354396175431303
+Precision: 0.5982532751091703
+Recall: 0.11784946236559139
+F1: 0.1969098095580309
+MCC: 0.07463727818734014
+------------------
+------------------

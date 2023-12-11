@@ -1,0 +1,26 @@
+iter 0 - END
+known_ones_index: 2811
+predicted_ones_index: 18813
+count_existing_elements_10: 2
+count_existing_elements_100: 33
+count_existing_elements_1000: 329
+Accuracy: 0.8655982565247435
+Precision: 0.9111388492629576
+Recall: 0.8114446032502249
+F1: 0.8584068318633626
+MCC: 0.735764787865971
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1405
+predicted_ones_index: 9406
+count_existing_elements_10: 8
+count_existing_elements_100: 62
+count_existing_elements_1000: 531
+Accuracy: 0.8088555785892734
+Precision: 0.8440824020465868
+Recall: 0.7199954059951763
+F1: 0.7771166480723938
+MCC: 0.6175629253264902
+------------------
+------------------

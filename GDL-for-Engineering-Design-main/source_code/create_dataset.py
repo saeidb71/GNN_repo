@@ -114,6 +114,11 @@ class IterationDataset(InMemoryDataset):
                            component_labels,
                            np_list,
                            nz_list)
+        """all_features = zip(betweenness, 
+                           eigenvector, 
+                           component_labels,
+                           np_list,
+                           nz_list)"""
         """all_features = zip(betweenness, eigenvector, 
                            list(np.array(new_node_feature_hot_key)[:,0]),
                            list(np.array(new_node_feature_hot_key)[:,1]),
@@ -144,7 +149,7 @@ class IterationDataset(InMemoryDataset):
     
     @property
     def num_node_features(self) -> int:
-        return 13#5#8
+        return 13#13#5#8
 
     @property
     def num_classes(self) -> int:

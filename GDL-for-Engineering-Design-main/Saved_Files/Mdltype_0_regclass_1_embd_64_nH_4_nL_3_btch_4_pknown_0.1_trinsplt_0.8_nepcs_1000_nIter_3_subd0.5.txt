@@ -1,0 +1,165 @@
+iter 0 - END
+known_ones_index: 2162
+predicted_ones_index: 17830
+count_existing_elements_10: 4
+count_existing_elements_100: 31
+count_existing_elements_1000: 338
+Accuracy: 0.8642739697872778
+Precision: 0.8950084127874369
+Recall: 0.823893850999019
+F1: 0.8579800532272372
+MCC: 0.7307292416149079
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1077
+predicted_ones_index: 7279
+count_existing_elements_10: 7
+count_existing_elements_100: 72
+count_existing_elements_1000: 493
+Accuracy: 0.8035894559730791
+Precision: 0.8446215139442231
+Recall: 0.72168094846813
+F1: 0.7783263704266363
+MCC: 0.609978140340665
+------------------
+------------------
+iter 2 - END
+known_ones_index: 488
+predicted_ones_index: 3397
+count_existing_elements_10: 9
+count_existing_elements_100: 84
+count_existing_elements_1000: 672
+Accuracy: 0.6965242478362412
+Precision: 0.8163085075066235
+Recall: 0.6363010555300597
+F1: 0.7151515151515152
+MCC: 0.4152799988685476
+------------------
+------------------
+iter 0 - END
+known_ones_index: 2156
+predicted_ones_index: 17532
+count_existing_elements_10: 5
+count_existing_elements_100: 38
+count_existing_elements_1000: 372
+Accuracy: 0.8535350940293907
+Precision: 0.8931667807437828
+Recall: 0.8035613485913686
+F1: 0.8459980010264999
+MCC: 0.7107013868632996
+seed: 99826
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1074
+predicted_ones_index: 7241
+count_existing_elements_10: 4
+count_existing_elements_100: 34
+count_existing_elements_1000: 365
+Accuracy: 0.7851927903262605
+Precision: 0.833862726142798
+Recall: 0.7020113940239507
+F1: 0.7622774902158819
+MCC: 0.5759946510555428
+seed: 99826
+------------------
+------------------
+iter 2 - END
+known_ones_index: 482
+predicted_ones_index: 4277
+count_existing_elements_10: 10
+count_existing_elements_100: 76
+count_existing_elements_1000: 590
+Accuracy: 0.7242093633476039
+Precision: 0.7612812719195698
+Recall: 0.7693761814744802
+F1: 0.7653073216594194
+MCC: 0.43102757128474145
+seed: 99826
+------------------
+------------------
+iter 0 - END
+known_ones_index: 2158
+predicted_ones_index: 17487
+count_existing_elements_10: 3
+count_existing_elements_100: 27
+count_existing_elements_1000: 292
+Accuracy: 0.8442606104203062
+Precision: 0.8765940412878138
+Recall: 0.7970155461966412
+F1: 0.8349128540305011
+MCC: 0.6909416599960828
+seed: 40389
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1079
+predicted_ones_index: 7602
+count_existing_elements_10: 9
+count_existing_elements_100: 43
+count_existing_elements_1000: 459
+Accuracy: 0.8062560759421284
+Precision: 0.8095238095238095
+Recall: 0.7603162836669137
+F1: 0.7841488277268094
+MCC: 0.6097025355487526
+seed: 40389
+------------------
+------------------
+iter 2 - END
+known_ones_index: 519
+predicted_ones_index: 3540
+count_existing_elements_10: 10
+count_existing_elements_100: 73
+count_existing_elements_1000: 604
+Accuracy: 0.7009997369113391
+Precision: 0.7912429378531074
+Recall: 0.6461361014994232
+F1: 0.7113650793650794
+MCC: 0.416753526601564
+seed: 40389
+------------------
+------------------
+iter 0 - END
+known_ones_index: 2161
+predicted_ones_index: 17640
+count_existing_elements_10: 5
+count_existing_elements_100: 45
+count_existing_elements_1000: 296
+Accuracy: 0.8606001438701059
+Precision: 0.9073696145124717
+Recall: 0.8084655015658148
+F1: 0.8550670441797106
+MCC: 0.7261132722169232
+seed: 52699
+------------------
+------------------
+iter 1 - END
+known_ones_index: 1080
+predicted_ones_index: 7443
+count_existing_elements_10: 7
+count_existing_elements_100: 53
+count_existing_elements_1000: 445
+Accuracy: 0.7883786848072563
+Precision: 0.8417304850194814
+Recall: 0.7103174603174603
+F1: 0.7704605546332166
+MCC: 0.5839175366215751
+seed: 52699
+------------------
+------------------
+iter 2 - END
+known_ones_index: 514
+predicted_ones_index: 3744
+count_existing_elements_10: 10
+count_existing_elements_100: 73
+count_existing_elements_1000: 548
+Accuracy: 0.7236329437054951
+Precision: 0.8058226495726496
+Recall: 0.6940418679549114
+F1: 0.7457669014954889
+MCC: 0.45269802738623066
+seed: 52699
+------------------
+------------------

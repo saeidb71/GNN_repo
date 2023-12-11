@@ -11,3 +11,16 @@ F1: 0.8582708492731447
 MCC: 0.7359354737885941
 ------------------
 ------------------
+iter 0 - END
+known_ones_index: 4323
+predicted_ones_index: 15393
+count_existing_elements_10: 5
+count_existing_elements_100: 39
+count_existing_elements_1000: 373
+Accuracy: 0.8675395242637071
+Precision: 0.9137270187747677
+Recall: 0.812066974595843
+F1: 0.859902790939382
+MCC: 0.7397158993329468
+------------------
+------------------

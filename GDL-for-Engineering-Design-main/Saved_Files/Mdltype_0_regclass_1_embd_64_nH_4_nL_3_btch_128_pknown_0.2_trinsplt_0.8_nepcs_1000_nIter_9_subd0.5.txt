@@ -1,0 +1,91 @@
+iter 0 - END
+known_ones_index: 4323
+predicted_ones_index: 15931
+count_existing_elements_10: 5
+count_existing_elements_100: 33
+count_existing_elements_1000: 325
+Accuracy: 0.871296858290702
+Precision: 0.9038352896867742
+Recall: 0.83135103926097
+F1: 0.8660792156626868
+MCC: 0.7450227439029721
+------------------
+------------------
+iter 1 - END
+known_ones_index: 2161
+predicted_ones_index: 6847
+count_existing_elements_10: 8
+count_existing_elements_100: 54
+count_existing_elements_1000: 502
+Accuracy: 0.8172117255665056
+Precision: 0.8574558200671827
+Recall: 0.7520174202638658
+F1: 0.8012829261635048
+MCC: 0.6380763168513709
+------------------
+------------------
+iter 2 - END
+known_ones_index: 982
+predicted_ones_index: 4348
+count_existing_elements_10: 10
+count_existing_elements_100: 79
+count_existing_elements_1000: 694
+Accuracy: 0.7490871914707171
+Precision: 0.7598896044158233
+Recall: 0.8305681246857718
+F1: 0.79365841940908
+MCC: 0.4782856431928771
+------------------
+------------------
+iter 3 - END
+known_ones_index: 491
+predicted_ones_index: 1571
+count_existing_elements_10: 9
+count_existing_elements_100: 78
+count_existing_elements_1000: 717
+Accuracy: 0.7092916283348666
+Precision: 0.6282622533418205
+Recall: 0.5920815836832634
+F1: 0.6096355775169857
+MCC: 0.3787954786022413
+------------------
+------------------
+iter 4 - END
+known_ones_index: 109
+predicted_ones_index: 318
+count_existing_elements_10: 0
+count_existing_elements_100: 1
+count_existing_elements_1000: 13
+Accuracy: 0.3825588796944621
+Precision: 0.321875
+Recall: 0.12032710280373832
+F1: 0.17517006802721088
+MCC: -0.2264848641602891
+------------------
+------------------
+iter 5 - END
+known_ones_index: 9
+predicted_ones_index: 253
+count_existing_elements_10: 0
+count_existing_elements_100: 0
+count_existing_elements_1000: 6
+Accuracy: 0.32075471698113206
+Precision: 0.14624505928853754
+Recall: 1.0
+F1: 0.2551724137931034
+MCC: 0.1839264209002549
+------------------
+------------------
+iter 6 - END
+known_ones_index: 50
+predicted_ones_index: 41
+count_existing_elements_10: 3
+count_existing_elements_100: 49
+count_existing_elements_1000: 489
+Accuracy: 0.6111111111111112
+Precision: 0.5365853658536586
+Recall: 0.3333333333333333
+F1: 0.4112149532710281
+MCC: 0.1530365230381036
+------------------
+------------------
