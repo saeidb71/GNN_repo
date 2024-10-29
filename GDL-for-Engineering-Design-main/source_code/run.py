@@ -124,13 +124,13 @@ except:
     p_known=0.1
     training_split=0.8
     epochs=1000#600 
-    n=3#5
+    n=1#5
     subd=0.5
 
 File_Name=f"Saved_Files/Mdltype_{Model_type}_regclass_{regres_or_classif}_embd_{embedding_size}_nH_{numHeads}_nL_{num_layers}_btch_{NUM_GRAPHS_PER_BATCH}_pknown_{p_known}_trinsplt_{training_split}_nepcs_{epochs}_nIter_{n}_subd{subd}"
 #python source_code/run.py --Model_type 0 --regres_or_classif 1 --embedding_size 64 --numHeads 4 --num_layers 3 --NUM_GRAPHS_PER_BATCH 4 --p_known 0.2 --training_split 0.8 --epochs 1000 --n 1
 
-Train_or_Check=1; #Train: 1 , Test : 0
+Train_or_Check=0; #Train: 1 , Test : 0
 # Set up early stopping parameters
 early_stopping_counter = 0
 best_val_accuracy = 0.0
@@ -247,7 +247,7 @@ for run in range(0,1):
             #criterion=torch.nn.L1Loss()
             criterion = lambda outputs,targets: custom_loss(outputs, targets, known_median)
 
-        try:
+        """try:
             os.remove(f'known_data_reg_p{p_known}_subd{subd}/processed/data.pt')
         except OSError as e:
 
@@ -257,7 +257,7 @@ for run in range(0,1):
         try:
             os.remove(f'unknown_data_reg_p{p_known}_subd{subd}/processed/data.pt')
         except OSError as e:
-            print('Error')
+            print('Error')"""
         
         if regres_or_classif==0: #classification
             known_torch = IterationDataset(root=f'known_data_classif_p{p_known}_subd{subd}', data=known_graphs, performance_threshold=known_median, regres_or_classif=regres_or_classif, transform=None, pre_transform=None, pre_filter=None) #known_torch[0]
@@ -482,7 +482,7 @@ for run in range(0,1):
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         if regres_or_classif==1:
-            ax.plot(Label_known_train,out_known_train, 'o',linewidth=2, markersize=1.0, markeredgewidth=2,markerfacecolor='blue')#,color='r')   
+            ax.plot(Label_known_train,out_known_train, 'o',linewidth=2, markersize=0.5, markeredgewidth=6)#,color='r')   
             ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
             ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
             #ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
@@ -504,7 +504,7 @@ for run in range(0,1):
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         if regres_or_classif==1:
-            ax.plot(Label_known_validation,out_known_validation, 'o',linewidth=2, markersize=1.0, markeredgewidth=2)#,color='r')   
+            ax.plot(Label_known_validation,out_known_validation, 'o',linewidth=2, markersize=0.5, markeredgewidth=6)#,color='r')   
             ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
             ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
             #ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
@@ -525,7 +525,7 @@ for run in range(0,1):
 
         fig, ax = plt.subplots(1, 1, figsize=(8, 6))
         if regres_or_classif==1:
-            ax.plot(Label_unknown,out_unknown, 'o',linewidth=2, markersize=1.0, markeredgewidth=2)#,color='r')   
+            ax.plot(Label_unknown,out_unknown, 'o',linewidth=2, markersize=0.5, markeredgewidth=6)#,color='r')   
             ax.axhline(y=known_median, color='gray', linestyle='--', label='Horizontal Line at y=2')
             ax.axvline(x=known_median, color='gray', linestyle='--', label='Vertical Line at y=2')
             #ax.plot([0, 1], [0, 1],linewidth=2, linestyle='--', color='red',alpha=0.6, label='Line from (0, 0) to (1, 1)')
@@ -806,3 +806,15 @@ for run in range(0,1):
 
     
     end_time = time.time()
+
+    top_10=np.array([9, 10, 10, 10,10 ])
+    top_100=np.array([84, 76, 73, 73, 75])
+    top_1000=np.array([672, 590, 604, 548, 596 ])
+
+    np.mean(top_10)
+    np.std(top_10)
+    np.mean(top_100)
+    np.std(top_100)
+    np.mean(top_1000)
+    np.std(top_1000)
+

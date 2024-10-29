@@ -53,10 +53,10 @@ numHeads=args.numHeads
 num_layers=args.num_layers
 NUM_GRAPHS_PER_BATCH=args.NUM_GRAPHS_PER_BATCH"""
 
-embedding_size=16#5#16#32
+embedding_size=16#16#5#16#32
 numHeads=4#2#4
 num_layers=3#3#3
-NUM_GRAPHS_PER_BATCH=100#300#100
+NUM_GRAPHS_PER_BATCH=105 #100  #100#99#100#300#100 #99 for GCN  #100 for GAT default  #105 for test size 20 \%
 
 #python HVAC_test_1.py --embedding_size 16 --numHeads 4 --num_layers 2 --NUM_GRAPHS_PER_BATCH 50
 
@@ -156,6 +156,13 @@ with open('rawTrainData_single_6_GNN', 'rb') as file:
         tEndPopBest_6 = pkl.load(file)
         Label_6 = pkl.load(file)
         t_allPop_6 = pkl.load(file)
+
+with open('rawTrainData_single_7_GNN', 'rb') as file:
+        distrbPop_7 = pkl.load(file)
+        tEndPopBest_7 = pkl.load(file)
+        Label_7 = pkl.load(file)
+        t_allPop_7 = pkl.load(file)
+        index_array_7=pkl.load(file)
 
 with open('Pop_Multi_3_GNN_all_data', 'rb') as file:
         Data_dict = pkl.load(file)
@@ -270,6 +277,22 @@ for g in np.arange(num_comp_6):
                          source_nodes+target_nodes, # Source Nodes
                          target_nodes+source_nodes  # Target Nodes
                         ], dtype=torch.long)
+     
+edge_list_dict_7={}
+for g in np.arange(num_comp_7):
+     g_i=Edge_GNN_dict[7][g]
+     source_nodes=[]
+     target_nodes=[]
+     for j in np.arange(len(g_i)):
+          edge_series=g_i[j]
+          # Iterate through the list of nodes and create edges
+          for i in range(len(edge_series) - 2):
+            source_nodes.append(edge_series[i])
+            target_nodes.append(edge_series[i + 1])
+     edge_list_dict_7[g] = torch.tensor([ # Create an edge list for a graph with 4 nodes--class 0
+                         source_nodes+target_nodes, # Source Nodes
+                         target_nodes+source_nodes  # Target Nodes
+                        ], dtype=torch.long)
 
 """edge_list_dict = {}
 edge_list_dict[0] = torch.tensor([ # Create an edge list for a graph with 4 nodes--class 0
@@ -368,6 +391,19 @@ for i in np.arange(len(distrbPop_6)):
                             [0.0, distrbPop_6[i][5]/np.sum(distrbPop_6[i]) ,distrbPop_6[i][5]/1000.0, 0.0], # Features of Node 6
                             ],dtype=torch.float32)#torch.long)
         
+node_features_list_dict_7={}
+for i in np.arange(len(distrbPop_7)):
+        node_features_list_dict_7[i] = torch.tensor([
+                            [0.0, 0.0, 0.0, 1.0], # Features of Node 0
+                            [0.0, distrbPop_7[i][0]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][0]/1000.0, 0.0], # Features of Node 1
+                            [0.0, distrbPop_7[i][1]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][1]/1000.0, 0.0], # Features of Node 2
+                            [0.0, distrbPop_7[i][2]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][2]/1000.0, 0.0], # Features of Node 3
+                            [0.0, distrbPop_7[i][3]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][3]/1000.0, 0.0], # Features of Node 4
+                            [0.0, distrbPop_7[i][4]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][4]/1000.0, 0.0], # Features of Node 5
+                            [0.0, distrbPop_7[i][5]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][5]/1000.0, 0.0], # Features of Node 6
+                            [0.0, distrbPop_7[i][6]/np.sum(distrbPop_7[i]) ,distrbPop_7[i][6]/1000.0, 0.0], # Features of Node 7
+                            ],dtype=torch.float32)#torch.long)
+        
 node_features_list_dict_3_multy={}
 for i in np.arange(len(distrb_arrays_multi_3)):
         node_features_list_dict_3_multy[i] = torch.tensor([
@@ -441,6 +477,13 @@ for i in np.arange(len(distrbPop_6)):
                 Data_list_test_Single_6[j] = Data(x=node_features_list_dict_6[i], edge_index=edge_list_dict_6[j],y=t_allPop_6[j][i])#,y=t_allPop_4[j][i])#, ,y=classes_pop_4[j][i] edge_attr=edge_weight)
                 #torch.save(Data_list[indx], os.path.join(os.getcwd()+'/Pop3_Dataset/') + f'5_data_{indx}.pt')
 
+Data_list_test_Single_7 =  [0] * 3799
+for i in np.arange(len(distrbPop_7)):
+        for j in np.arange(3799):
+                Data_list_test_Single_7[j] = Data(x=node_features_list_dict_7[i], edge_index=edge_list_dict_7[index_array_7[j]],y=t_allPop_7[j][i])#,y=t_allPop_4[j][i])#, ,y=classes_pop_4[j][i] edge_attr=edge_weight)
+                #torch.save(Data_list[indx], os.path.join(os.getcwd()+'/Pop3_Dataset/') + f'5_data_{indx}.pt')
+
+
 #list of graphs in nx format
 graphs_list_nx=[]
 for i in np.arange(len(Data_list)):
@@ -449,7 +492,11 @@ for i in np.arange(len(Data_list)):
 graphs_list_nx_test_6=[]
 for i in np.arange(len(Data_list_test_Single_6)):
      graphs_list_nx_test_6.append(to_networkx(Data_list_test_Single_6[i], to_undirected=True))
-
+#nx.draw_networkx(graphs_list_nx[35309])
+     
+graphs_list_nx_test_7=[]
+for i in np.arange(len(Data_list_test_Single_7)):
+     graphs_list_nx_test_7.append(to_networkx(Data_list_test_Single_7[i], to_undirected=True))     
 
 #-----------------------------------------Batch Loader---------------------------------------
 
@@ -459,19 +506,67 @@ for i in np.arange(len(Data_list_test_Single_6)):
 #Data_list=Data_list[0:35299] #only singel split cases
 #Data_list=Data_list[35299:] #only multi split cases
 
-order_indices = [
-    list(range(0,781)),        # 0 to 780
-    list(range(2600, 6834)),  # 2600 to 6833
-    list(range(16762, 22273)),# 16762 to 22272
-    list(range(35299, 35380)),# 35299 to 35379
-    list(range(35569, 36097)),# 35569 to 36096
+# all S3, S4, S5, M3, M4
+"""order_indices = [
+    list(range(0,781)),        # 0 to 780        #S3
+    list(range(2600, 6834)),  # 2600 to 6833     #S4
+    list(range(16762, 22273)),# 16762 to 22272   #S5
+    list(range(35299, 35380)),# 35299 to 35379   #M3
+    list(range(35569, 36097)),# 35569 to 36096   #M4
     list(range(781, 2600)),# 781 to 2599
     list(range(6834, 16762)),# 6834 to 16761
     list(range(22273, 35299)),# 22273 to 35298
     list(range(35380, 35569)),# 35380 to 35568
     list(range(36097, 37329)),# 36097 to 37328
     # Add more ranges as needed
+]"""
+
+# all S3, S4, S5, M3, M4 #!!!!!!!!!!!!!!! change test size from 30 % to 20 % !!!!!!!!!!!!!!!!!!!!!
+order_indices = [
+    list(range(0,521)),        # 0 to 780        #S3
+    list(range(2600, 5375)),  # 2600 to 6833     #S4
+    list(range(16762, 20270)),# 16762 to 22272   #S5
+    list(range(35299, 35354)),# 35299 to 35379   #M3
+    list(range(35569, 35922)),# 35569 to 36096   #M4
+    list(range(521, 2600)),# 781 to 2599
+    list(range(5375, 16762)),# 6834 to 16761
+    list(range(20270, 35299)),# 22273 to 35298
+    list(range(35354, 35569)),# 35380 to 35568
+    list(range(35922, 37329)),# 36097 to 37328
+    # Add more ranges as needed
 ]
+
+"""# S3, S4, M3, M4
+order_indices = [
+    list(range(0,781)),        # 0 to 780        #S3
+    list(range(2600, 6834)),  # 2600 to 6833     #S4
+    #list(range(16762, 22273)),# 16762 to 22272   #S5
+    list(range(35299, 35380)),# 35299 to 35379   #M3
+    list(range(35569, 36097)),# 35569 to 36096   #M4
+    list(range(781, 2600)),# 781 to 2599
+    list(range(6834, 16762)),# 6834 to 16761
+    list(range(16762, 22273)),
+    list(range(22273, 35299)),# 22273 to 35298
+    list(range(35380, 35569)),# 35380 to 35568
+    list(range(36097, 37329)),# 36097 to 37328
+    # Add more ranges as needed
+]"""
+
+# S3, M3
+"""order_indices = [
+    list(range(0,781)),        # 0 to 780        #S3
+    #list(range(16762, 22273)),# 16762 to 22272   #S5
+    list(range(35299, 35380)),# 35299 to 35379   #M3
+    list(range(35569, 36097)),# 35569 to 36096   #M4
+    list(range(2600, 6834)),  # 2600 to 6833     #S4
+    list(range(781, 2600)),# 781 to 2599
+    list(range(6834, 16762)),# 6834 to 16761
+    list(range(16762, 22273)),
+    list(range(22273, 35299)),# 22273 to 35298
+    list(range(35380, 35569)),# 35380 to 35568
+    list(range(36097, 37329)),# 36097 to 37328
+    # Add more ranges as needed
+]"""
 
 Data_list_shuffled = [Data_list[i] for sublist in order_indices for i in sublist]
 assert len(Data_list_shuffled) == len(Data_list)
@@ -485,10 +580,30 @@ loader = DataLoader(Data_list_shuffled[:int(data_size * 0.3)],    #was 0.8
 loader_test = DataLoader(Data_list_shuffled[int(data_size * 0.3):],   #was 0.8
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)"""
 
-loader = DataLoader(Data_list_shuffled[:11134],    
+# all S3, S4, S5, M3, M4
+"""loader = DataLoader(Data_list_shuffled[:11134],    
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
 loader_test = DataLoader(Data_list_shuffled[11134:],  
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)"""
+
+# all S3, S4, S5, M3, M4  # !!!!!!!!!!!!changed test size to 20 %!!!!!!!!!!!
+loader = DataLoader(Data_list_shuffled[:7212],    
                     batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
+loader_test = DataLoader(Data_list_shuffled[7212:],  
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
+
+# S3, S4, M3, M4
+"""loader = DataLoader(Data_list_shuffled[:11134-5511],    
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
+loader_test = DataLoader(Data_list_shuffled[11134+5511:],  
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)"""
+
+# S3, M3
+"""loader = DataLoader(Data_list_shuffled[:862],    
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)
+loader_test = DataLoader(Data_list_shuffled[862:],  
+                    batch_size=NUM_GRAPHS_PER_BATCH, shuffle=True)"""
+
 
 """for batch in loader:
        print(batch.x.float())
@@ -504,7 +619,7 @@ loader_test = DataLoader(Data_list_shuffled[11134:],
         plt.clf()"""
 
 #-----------------------------------------GCN Model---------------------------------------
-"""embedding_size = 64#90#64#32
+"""embedding_size = 65#64#90#64#32
 num_features= Data_list[0].x.shape[1]
 num_output=1#10 # 1:regression 1:clasification: cross entropy
 class GCN(torch.nn.Module):
@@ -517,7 +632,7 @@ class GCN(torch.nn.Module):
         self.initial_conv = GCNConv(num_features, embedding_size)
         self.conv1 = GCNConv(embedding_size, embedding_size)
         self.conv2 = GCNConv(embedding_size, embedding_size)
-        self.conv3 = GCNConv(embedding_size, embedding_size)
+        #self.conv3 = GCNConv(embedding_size, embedding_size)
         #self.conv4 = GCNConv(embedding_size, embedding_size)
         #self.SAGPooling = SAGPooling(embedding_size, ratio=0.5)
         #self.ASAPooling = ASAPooling(embedding_size, ratio=0.5)
@@ -540,9 +655,9 @@ class GCN(torch.nn.Module):
         hidden = self.conv2(hidden, edge_index)
         #hidden = F.relu(hidden)
         hidden = F.tanh(hidden)
-        hidden = self.conv3(hidden, edge_index)
+        #hidden = self.conv3(hidden, edge_index)
         #hidden = F.relu(hidden)
-        hidden = F.tanh(hidden)
+        #hidden = F.tanh(hidden)
 
         #-------------levrel 4-----------------------
         #hidden = self.conv4(hidden, edge_index)
@@ -674,9 +789,9 @@ class GAT(torch.nn.Module):
 #model = GAT()
 model = GAT(num_layers, numHeads, num_features, embedding_size, num_output)
 # Specify the file path where you saved the model.
-model_path = 'embd_16_nHead_4_nlayer_3_Batch_100.pth'   #'embd_8_nHead_2_nlayer_3_Batch_100.pth'   #  'embd_32_nHead_4_nlayer_3_Batch_100.pth' 
+#model_path = 'embd_16_nHead_4_nlayer_3_Batch_100.pth'   #'embd_8_nHead_2_nlayer_3_Batch_100.pth'   #  'embd_32_nHead_4_nlayer_3_Batch_100.pth' 
 # Load the saved state dictionary into the model.
-model.load_state_dict(torch.load(model_path))
+#model.load_state_dict(torch.load(model_path))
 print(model)
 print("Number of parameters: ", sum(p.numel() for p in model.parameters()))
 
@@ -733,7 +848,7 @@ def train():
       optimizer.step()
     return loss, embedding
 
-"""print("Starting training...")
+print("Starting training...")
 
 train_loss_vec_100=[]
 test_loss_vec_100=[]
@@ -744,11 +859,11 @@ with mlflow.start_run():
     mlflow.pytorch.autolog()
     mlflow.log_param("embedding_size", embedding_size)
     mlflow.log_param("num_features", num_features)
-    for epoch in range(20000): #was 10000 
+    for epoch in range(5000): #was 10000 
         loss, h = train()
         losses.append(loss)
         avg_train_loss.append(loss)
-        if epoch % 100 == 0:
+        if epoch % 1000 == 0: #was 100
             model_path = f'{File_Name}.pth' #'trained_model_1.pth'
             torch.save(model.state_dict(), model_path)
             #print(f"Epoch {epoch} | Train Loss {loss}")
@@ -784,18 +899,26 @@ data_during_trainig['losses']=losses
 data_during_trainig['train_loss_vec_100']=train_loss_vec_100
 data_during_trainig['test_loss_vec_100']=test_loss_vec_100
 with open(file_path, 'wb') as file:
-    pkl.dump(data_during_trainig, file)"""
+    pkl.dump(data_during_trainig, file)
 
 #----------------Plot lloss-----------------------
 with open(f'{File_Name}.pkl', 'rb') as file:
     data_during_trainig = pkl.load(file)
+
+with open('embd_16_nHead_4_nlayer_3_Batch_99.pkl', 'rb') as file: #for GCN
+    data_during_trainig_GCN = pkl.load(file)
 
 losses=data_during_trainig['losses']
 train_loss_vec_100=data_during_trainig['train_loss_vec_100']
 test_loss_vec_100=data_during_trainig['test_loss_vec_100']
 iters=np.arange(len(test_loss_vec_100))
 
-fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+losses_GCN=data_during_trainig_GCN['losses']
+train_loss_vec_100_GCN=data_during_trainig_GCN['train_loss_vec_100']
+test_loss_vec_100_GCN=data_during_trainig_GCN['test_loss_vec_100']
+iters_GCN=np.arange(len(test_loss_vec_100_GCN))
+
+"""fig, ax = plt.subplots(1, 1, figsize=(8, 6))
 ax.plot(iters[1:],torch.tensor(train_loss_vec_100).detach().numpy()[1:], '-o',linewidth=1.5,color='r',label='Train')
 ax.plot(iters[1:],torch.tensor(test_loss_vec_100).detach().numpy()[1:], '-o',linewidth=1.5,color='b',label='Test')
 ax.set_ylabel('$\mathrm{Loss}_{\mathrm{avg}}$', fontsize=20)
@@ -804,6 +927,18 @@ ax.legend(fontsize=15)  # Include the custom legend  title='Legend'
 ax.tick_params(axis='both', which='major', labelsize=15)
 fig.savefig('Loss.png',bbox_inches='tight',dpi=300)
 fig.savefig('Loss.pdf',bbox_inches='tight',dpi=300)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(iters[1:35],torch.tensor(train_loss_vec_100).detach().numpy()[1:35], '-o',linewidth=1.5,color='r',label='Train-GAT')
+ax.plot(iters[1:35],torch.tensor(test_loss_vec_100).detach().numpy()[1:35], '-o',linewidth=1.5,color='b',label='Test-GAT')
+ax.plot(iters_GCN[1:35],torch.tensor(train_loss_vec_100_GCN).detach().numpy()[1:35], ':s',linewidth=1.5,color='r',label='Train-GCN',alpha=0.5)
+ax.plot(iters_GCN[1:35],torch.tensor(test_loss_vec_100_GCN).detach().numpy()[1:35], ':s',linewidth=1.5,color='b',label='Test-GCN',alpha=0.5)
+ax.set_ylabel('$\mathrm{Loss}_{\mathrm{avg}}$', fontsize=20)
+ax.set_xlabel('$100 \\times \\mathrm{iter}$', fontsize=20)
+ax.legend(fontsize=15)  # Include the custom legend  title='Legend'
+ax.tick_params(axis='both', which='major', labelsize=15)
+fig.savefig('Loss_compare_GAT_GCN.png',bbox_inches='tight',dpi=300)
+fig.savefig('Loss_compare_GAT_GCN.pdf',bbox_inches='tight',dpi=300)"""
 
 #-----------------Test learned model on Single 6-------------------------
 t_pred_6=np.zeros((num_comp_6,len(distrbPop_6)))
@@ -956,6 +1091,112 @@ fig.savefig('end_result_6_all.png',bbox_inches='tight',dpi=300)
 fig.savefig('end_result_6_all.pdf',bbox_inches='tight',dpi=300)       
 mlflow.log_artifact("end_result_6_all.png")"""
 
+#-----------------Test learned model on Single 7-------------------------
+t_pred_7=np.zeros((3799,len(distrbPop_7)))
+pred_best_class_7=np.zeros(len(distrbPop_7),dtype=int)
+with torch.no_grad():
+     for i in np.arange(len(distrbPop_7)):
+          t_true=t_allPop_7[:,i]
+          for j in np.arange(3799):
+               indcx=j
+               t_p,hid=model(Data_list_test_Single_7[indcx].x.float(), Data_list_test_Single_7[indcx].edge_index, Data_list_test_Single_7[indcx].batch)
+               t_pred_7[j,i]=t_p.numpy().flatten()[0]
+          pred_best_class_7[i]=np.argmax(t_pred_7[:,i])
+
+N_OL_S7=np.sum(t_pred_7>t_pred_7[int(Label_7)]) # need to run thisamount of OLOC simuyaltion to get the true best solution
+
+pred_7_best=np.zeros(len(distrbPop_7))
+pred_7_best_rel_val=np.zeros(len(distrbPop_7))
+num_clasess_btter_than_best_pred_7_single=np.zeros(len(distrbPop_7))
+for g in np.arange(len(distrbPop_7)):
+    y_val_all=t_allPop_7[:,g]
+    y_val_pred_best=t_allPop_7[pred_best_class_7[g],g]
+    pred_7_best[g]=y_val_pred_best
+    num_clasess_btter_than_best_pred_7_single[g] = float(np.sum(y_val_all >= y_val_pred_best))
+    pred_7_best_rel_val[g]=map_scalar_to_range(y_val_all, y_val_pred_best)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+for g in np.arange(len(distrbPop_7)):
+     y_val_all=t_allPop_7[:,g]
+     x_val=g*np.ones(len(y_val_all))
+     ax.plot(y_val_all,'o',markersize=3.0)
+ax.plot(pred_best_class_7,pred_7_best,'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best \, \, :} \, \, J(G_{\hat{i}^{*}}) $',color='r')
+ax.plot(Label_7,t_allPop_7[Label_7.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best\,\, :} \, \, J(G_{i^{*}})$',color='g')
+ax.axhline(y=pred_7_best, color='r', linestyle='--')
+ax.axhline(y=t_allPop_7[Label_7.astype(int),0], color='g', linestyle='--')
+ax.set_title(f'$N_{{\mathrm{{sub}}}}\,:\, {num_clasess_btter_than_best_pred_7_single[0].astype(int)-1} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{sub}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*(num_clasess_btter_than_best_pred_7_single[0].astype(int)-1)/y_val_all.shape[0],2)}\,\, , \,\, J_{{\mathrm{{sub}}}} \, : \,{np.round(pred_7_best[0]/t_allPop_7[Label_7.astype(int),0][0],3)}   $',fontsize=15) 
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \mathrm{Case\,\,ID}$',fontsize=20)
+ax.set_ylabel('$J\, (G_i) \,\,\mathrm{[s]}$',fontsize=20)
+# Create legend handles and labels for the 'o' and 's' points
+ax.legend(loc='best', fontsize=15)
+fig.savefig('all_pop_S7_t.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_S7_t.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_S7_t.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_pred_7[:,0],'o',markersize=3.0)
+ax.plot(pred_best_class_7,t_pred_7[pred_best_class_7,0],'s',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best\, \, :} \, \, \hat{J}(G_{\hat{i}^{*}}) $',color='r')
+ax.plot(Label_7,t_pred_7[Label_7.astype(int),0],'d',markersize=15,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{True\,\, Best\,\, :} \, \, \hat{J}(G_{i^{*}})$',color='g')
+ax.axhline(y=t_pred_7[pred_best_class_7,0], color='r', linestyle='--')
+ax.axhline(y=t_pred_7[Label_7.astype(int),0], color='g', linestyle='--')
+ax.tick_params(axis='both', which='major', labelsize=15)
+#ax.set_title(f'$\mathrm{{Num\,\, Graphs\,}}:\, {y_val_all.shape[0]} \, \, , \, \, N_{{\mathrm{{OL}}}}\,: \, {N_OL_S6}  $',fontsize=15) 
+ax.set_title(f'$N_{{\mathrm{{OL}}}}\,:\, {N_OL_S7} \, \, , \, \, N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \,  \% N_{{\mathrm{{OL}}}}/N_{{\mathrm{{g}}}}\, :\, {np.round(100*N_OL_S7/y_val_all.shape[0],2)}  $',fontsize=15) 
+ax.set_xlabel('$ \mathrm{Case\,\,ID}$',fontsize=20)
+ax.set_ylabel('$\hat{J}\, (G_i) \,\,\mathrm{[s]}$',fontsize=20)
+# Create legend handles and labels for the 'o' and 's' points
+ax.legend(loc='lower left', fontsize=15)
+fig.savefig('all_pop_S7_t_hat.png',bbox_inches='tight',dpi=300)
+fig.savefig('all_pop_S7_t_hat.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("all_pop_S7_t_hat.png")
+
+t_true_7_sorted_index = np.argsort(t_allPop_7.flatten())
+t_true_7_sorted_val = t_allPop_7.flatten()[t_true_7_sorted_index]
+t_pred_7_sorted_val_sorted_from_ture_indx =t_pred_7.flatten()[t_true_7_sorted_index]
+
+t_true_7_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_true_7_sorted_val, 4), x, kind='strict'))(np.round(t_true_7_sorted_val, 1))
+t_pred_7_sorted_val_percentileofscoreVec = np.vectorize(lambda x: stats.percentileofscore(
+        np.round(t_pred_7_sorted_val_sorted_from_ture_indx, 4), x, kind='strict'))(np.round(t_pred_7_sorted_val_sorted_from_ture_indx, 1))
+
+kendall_distance_S7, _ = kendalltau(t_true_7_sorted_val_percentileofscoreVec, t_pred_7_sorted_val_percentileofscoreVec)
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_true_7_sorted_val_percentileofscoreVec,t_pred_7_sorted_val_percentileofscoreVec,'o',markersize=2)#,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+#ax.plot([0,100], [0,100],color='r',alpha=0.4, linewidth=6)
+ax.plot([0,100], [0,100],'--',color='r',alpha=0.4, linewidth=3)
+tick_locations = [0, 20, 40, 60, 80, 100]
+tick_labels = [f'{tick}%' for tick in tick_locations]
+# Update x and y ticks
+ax.set_xticks(tick_locations)
+ax.set_xticklabels(tick_labels, fontsize=15)
+ax.set_yticks(tick_locations)
+ax.set_yticklabels(tick_labels, fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_title(f'$\mathrm{{Case}} \, : \, S_7 \, \, , \, \,  N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \, \, , \, \, K\, :\, {np.round(kendall_distance_S6,2)}  $',fontsize=15) 
+ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
+ax.set_ylabel('$\mathrm{predicted\,\,sorted\,\,locations}$',fontsize=15)
+ax.set_xlim(0.4, 100.4)
+ax.set_ylim(-0.4, 100.4)
+fig.savefig('S7_K.png',bbox_inches='tight',dpi=300)
+fig.savefig('S7_K.pdf',bbox_inches='tight',dpi=300)
+mlflow.log_artifact("S7_K.png")
+
+fig, ax = plt.subplots(1, 1, figsize=(8, 6))
+ax.plot(t_true_7_sorted_val_percentileofscoreVec,t_true_7_sorted_val,'o',markersize=2)#,markerfacecolor='none', markeredgewidth=2,label='$\mathrm{Predicted\,\, Best}$',color='r')
+tick_locations_x = [0, 20, 40, 60, 80, 100]
+tick_labels_x = [f'{tick}%' for tick in tick_locations_x]
+ax.set_xticks(tick_locations_x)
+ax.set_xticklabels(tick_labels_x, fontsize=15)
+ax.tick_params(axis='both', which='major', labelsize=15)
+ax.set_xlabel('$ \mathrm{sorted\,\,observed\,\,performance\,\,locations}$',fontsize=15)
+ax.set_ylabel('$J\, (G_i) \,\,\mathrm{[s]}$',fontsize=20)
+ax.set_title(f'$N_{{\mathrm{{sub}}}}\,:\, {num_clasess_btter_than_best_pred_7_single[0].astype(int)-1} \, \, ,  \, \, N_{{\mathrm{{OL}}}}\,:\, {N_OL_S7}  \, \, ,  \, \,  N_{{\mathrm{{g}}}}\,: \,  {y_val_all.shape[0]} \,\, , \,\, J_{{\mathrm{{sub}}}} \, : \,{np.round(pred_7_best[0]/t_allPop_7[Label_7.astype(int),0][0],3)}   $',fontsize=15) 
+fig.savefig('S7_comp_graphs.png',bbox_inches='tight',dpi=300)
+fig.savefig('S7_comp_graphs.pdf',bbox_inches='tight',dpi=300)
+fig.savefig('S7_comp_graphs.svg',bbox_inches='tight',dpi=300)
+                                                     
 #-----------------------------------------Test Learned Model---------------------------------------
 # Analyze the results for one batch
 
@@ -1103,6 +1344,9 @@ graph_embedding_2d = tsne.fit_transform(all_node_embeddings)
 #tsne_3d = TSNE(n_components=3, random_state=42)
 #graph_embedding_3d = tsne_3d.fit_transform(all_node_embeddings)
 
+#tsne_6d = TSNE(n_components=6, random_state=42,method='exact')
+#graph_embedding_6d = tsne_6d.fit_transform(all_node_embeddings)
+
 classess_graphs=np.zeros(len(Data_list),dtype=int)
 for i in np.arange(len(Data_list)):
      if i<len(distrbPop_3)* num_comp_3:
@@ -1138,6 +1382,17 @@ fig.savefig('graph_embedding.png',bbox_inches='tight',dpi=300)
 fig.savefig('graph_embedding.pdf',bbox_inches='tight',dpi=300)
 #plt.savefig('graph_embedding.png')
 mlflow.log_artifact("graph_embedding.png")
+
+
+"""# Create a DataFrame for easier plotting
+import pandas as pd
+df_tsne = pd.DataFrame(graph_embedding_6d, columns=['TSNE1', 'TSNE2', 'TSNE3','TSNE4', 'TSNE5', 'TSNE6'])
+df_tsne['label'] = classess_graphs
+# Parallel Coordinates Plot
+plt.figure(figsize=(12, 6))
+pd.plotting.parallel_coordinates(df_tsne, 'label', colormap='viridis')
+plt.title('Parallel Coordinates Plot of t-SNE Embeddings')
+plt.show()"""
 
 """class_single_3_indx = np.where(classess_graphs == 0)[0]
 fig, ax = plt.subplots()

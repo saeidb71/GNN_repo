@@ -5,13 +5,20 @@ esol/
 data/
 Cora/
 
+
 # Ignore PNG and PDF files
 *.png
+*.bkp
+*.svg
+*.pyc
 *.pdf
 *.pkl
+*.dtmp
 *.pth
+*.txt
 embd_*.pkl
 *.drawio
+rawTrainData_single_7_GNN
 embd_16_nHead_4_nlayer_3_Batch_100.pkl
 embd_16_nHead_4_nlayer_3_Batch_100.pth
 embd_16_nHead_4_nlayer_3_Batch_5000.pkl 
